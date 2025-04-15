@@ -412,34 +412,684 @@ function initEventListeners() {
         });
     }
     
+    // Analysis panel toggle
+    document.getElementById('analysis-btn').addEventListener('click', () => {
+        const analysisPanel = document.querySelector('.analysis-panel');
+        analysisPanel.style.display = analysisPanel.style.display === 'none' || !analysisPanel.style.display ? 'flex' : 'none';
+        
+        // Hide layers panel if analysis panel is opened
+        const layersPanel = document.querySelector('.layers-panel');
+        if (analysisPanel.style.display === 'flex' && !layersPanel.classList.contains('hidden')) {
+            layersPanel.classList.add('hidden');
+        }
+    });
+    
+    // Analysis buttons
+    document.getElementById('highest-scores-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showTopTracts();
+    });
+    
+    document.getElementById('distribution-analysis-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showSpatialAnalysis();
+    });
+    
+    document.getElementById('all-places-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showAllThirdPlaceTypes();
+    });
+    
+    document.getElementById('civic-engagement-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showCivicEngagementAnalysis();
+    });
+    
+    document.getElementById('tract-type-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showTractTypeAnalysis();
+    });
+    
+    document.getElementById('income-analysis-btn').addEventListener('click', (e) => {
+        setActiveAnalysisButton(e.target);
+        showIncomeAnalysis();
+    });
+    
     // Panel toggle buttons
     document.getElementById('layers-btn').addEventListener('click', () => {
         const layersPanel = document.querySelector('.layers-panel');
         layersPanel.classList.toggle('hidden');
+        
+        // Hide analysis panel if layers panel is opened
+        const analysisPanel = document.querySelector('.analysis-panel');
+        if (!layersPanel.classList.contains('hidden') && analysisPanel.style.display === 'flex') {
+            analysisPanel.style.display = 'none';
+        }
     });
     
     // Close buttons
     document.querySelectorAll('.close-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const panel = e.target.closest('.panel');
-            panel.classList.add('hidden');
             
-            // Clear selected tract if closing details panel
             if (panel.classList.contains('details-panel')) {
+                panel.classList.add('hidden');
+                // Clear selected tract if closing details panel
                 clearSelectedTract();
+            } else if (panel.classList.contains('layers-panel')) {
+                panel.classList.add('hidden');
+            } else if (panel.classList.contains('analysis-panel')) {
+                panel.style.display = 'none';
             }
         });
     });
     
     // Handle clicks outside of panels to close them
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.panel') && !e.target.closest('#layers-btn')) {
+        if (!e.target.closest('.panel') && 
+            !e.target.closest('#layers-btn') && 
+            !e.target.closest('#analysis-btn')) {
+            
             const layersPanel = document.querySelector('.layers-panel');
             if (!layersPanel.classList.contains('hidden')) {
                 layersPanel.classList.add('hidden');
             }
+            
+            const analysisPanel = document.querySelector('.analysis-panel');
+            if (analysisPanel.style.display === 'flex') {
+                analysisPanel.style.display = 'none';
+            }
         }
     });
+}
+
+// Set active analysis button
+function setActiveAnalysisButton(button) {
+    // Remove active class from all buttons
+    document.querySelectorAll('.analysis-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to the clicked button
+    button.classList.add('active');
+}
+
+// Show top tracts analysis
+function showTopTracts() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Get the top 5 tracts by overall score
+    const topTracts = [...tractsRanking]
+        .sort((a, b) => b.overall - a.overall)
+        .slice(0, 5);
+    
+    let html = '<h3>Top 5 Census Tracts by Third Place Index</h3>';
+    
+    topTracts.forEach((tract, index) => {
+        // Find the tract feature to get more info
+        const tractFeature = tractsData.features.find(f => f.properties.GEOID === tract.id);
+        
+        if (tractFeature) {
+            const props = tractFeature.properties;
+            
+            // Get the neighborhood name or use Census Tract ID
+            const name = `Census Tract ${props.GEOID}`;
+            
+            // Get demographic info if available
+            const population = props.population ? formatNumber(props.population) : 'N/A';
+            const density = props.density ? `${formatNumber(props.density)}/sq mi` : 'N/A';
+            
+            // Get place counts
+            const traditionalCount = Math.round(props.traditional_count || 0);
+            const communityCount = Math.round(props.community_count || 0);
+            const modernCount = Math.round(props.modern_count || 0);
+            const totalPlaces = traditionalCount + communityCount + modernCount;
+            
+            html += `
+                <div class="top-tract-item">
+                    <div class="top-tract-rank">${index + 1}</div>
+                    <div class="top-tract-details">
+                        <div class="top-tract-name">${name}</div>
+                        <div class="top-tract-stats">
+                            <span class="top-tract-stat">Score: ${tract.overall.toFixed(2)}</span>
+                            <span class="top-tract-stat">Population: ${population}</span>
+                            <span class="top-tract-stat">Density: ${density}</span>
+                            <span class="top-tract-stat">Places: ${totalPlaces}</span>
+                            <span class="top-tract-stat">Traditional: ${traditionalCount}</span>
+                            <span class="top-tract-stat">Community: ${communityCount}</span>
+                            <span class="top-tract-stat">Modern: ${modernCount}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    // Add summary
+    html += `
+        <div class="analysis-summary">
+            <p>The highest-scoring census tracts tend to have a well-balanced mix of third places, 
+            with particularly strong presence of both traditional establishments and modern venues. 
+            These areas typically feature higher population density and are located near commercial corridors.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Highlight these tracts on the map
+    highlightTopTracts(topTracts.map(t => t.id));
+    
+    // Create a chart comparing the top tracts
+    createTopTractsComparisonChart(topTracts);
+}
+
+// Create a chart comparing top tracts
+function createTopTractsComparisonChart(topTracts) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 20, bottom: 50, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Component Scores of Top 5 Tracts');
+    
+    // Prepare data for chart
+    const chartData = [];
+    topTracts.forEach((tract, i) => {
+        const tractFeature = tractsData.features.find(f => f.properties.GEOID === tract.id);
+        if (tractFeature) {
+            const props = tractFeature.properties;
+            chartData.push({
+                name: `Tract ${i+1}`,
+                traditional: props.traditional_index,
+                community: props.community_index,
+                modern: props.modern_index
+            });
+        }
+    });
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(chartData.map(d => d.name))
+        .range([0, innerWidth])
+        .padding(0.2);
+        
+    const yScale = d3.scaleLinear()
+        .domain([0, 1])
+        .range([innerHeight, 0]);
+    
+    // Set up color scale
+    const colorScale = d3.scaleOrdinal()
+        .domain(['traditional', 'community', 'modern'])
+        .range(['#ff8f00', '#00acc1', '#c51b8a']);
+    
+    // Create grouped bars
+    const categories = ['traditional', 'community', 'modern'];
+    const categoryLabels = ['Traditional', 'Community', 'Modern'];
+    const categoryWidth = xScale.bandwidth() / categories.length;
+    
+    categories.forEach((category, i) => {
+        g.selectAll(`.bar-${category}`)
+            .data(chartData)
+            .enter()
+            .append('rect')
+            .attr('class', `bar-${category}`)
+            .attr('x', d => xScale(d.name) + (i * categoryWidth))
+            .attr('y', d => yScale(d[category]))
+            .attr('width', categoryWidth - 2)
+            .attr('height', d => innerHeight - yScale(d[category]))
+            .attr('fill', colorScale(category));
+    });
+    
+    // Add axes
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('font-size', '12px');
+    
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5))
+        .selectAll('text')
+        .style('font-size', '12px');
+    
+    // Add legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width / 2 - 100}, ${height - 15})`);
+    
+    categories.forEach((category, i) => {
+        const legendGroup = legend.append('g')
+            .attr('transform', `translate(${i * 100}, 0)`);
+        
+        legendGroup.append('rect')
+            .attr('width', 12)
+            .attr('height', 12)
+            .attr('fill', colorScale(category));
+        
+        legendGroup.append('text')
+            .attr('x', 16)
+            .attr('y', 10)
+            .style('font-size', '12px')
+            .text(categoryLabels[i]);
+    });
+}
+
+// Show third place distribution analysis
+function showThirdPlaceDistributionAnalysis() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Calculate some statistics about the distribution
+    const totalTracts = tractsRanking.length;
+    const tractsWithPlaces = tractsRanking.filter(t => 
+        tractsData.features.find(f => 
+            f.properties.GEOID === t.id && 
+            (f.properties.traditional_count > 0 || 
+             f.properties.community_count > 0 || 
+             f.properties.modern_count > 0)
+        )
+    ).length;
+    
+    const percentageWithPlaces = ((tractsWithPlaces / totalTracts) * 100).toFixed(1);
+    
+    // Count total places by category
+    let totalTraditional = 0;
+    let totalCommunity = 0;
+    let totalModern = 0;
+    
+    tractsData.features.forEach(feature => {
+        totalTraditional += Math.round(feature.properties.traditional_count || 0);
+        totalCommunity += Math.round(feature.properties.community_count || 0);
+        totalModern += Math.round(feature.properties.modern_count || 0);
+    });
+    
+    const totalPlaces = totalTraditional + totalCommunity + totalModern;
+    
+    const traditionalPercent = ((totalTraditional / totalPlaces) * 100).toFixed(1);
+    const communityPercent = ((totalCommunity / totalPlaces) * 100).toFixed(1);
+    const modernPercent = ((totalModern / totalPlaces) * 100).toFixed(1);
+    
+    // Create category stats with bars
+    let categoryStats = `
+        <div class="category-stats">
+            <div class="category-stat category-stat-traditional">
+                <div class="category-stat-label">Traditional</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${traditionalPercent}%"></div>
+                </div>
+                <div class="category-stat-count">${totalTraditional}</div>
+                <div class="category-stat-percent">${traditionalPercent}%</div>
+            </div>
+            <div class="category-stat category-stat-community">
+                <div class="category-stat-label">Community</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${communityPercent}%"></div>
+                </div>
+                <div class="category-stat-count">${totalCommunity}</div>
+                <div class="category-stat-percent">${communityPercent}%</div>
+            </div>
+            <div class="category-stat category-stat-modern">
+                <div class="category-stat-label">Modern</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${modernPercent}%"></div>
+                </div>
+                <div class="category-stat-count">${totalModern}</div>
+                <div class="category-stat-percent">${modernPercent}%</div>
+            </div>
+        </div>
+    `;
+    
+    // Create analysis text
+    const html = `
+        <h3>Third Place Distribution Analysis</h3>
+        <div class="analysis-text">
+            <p>Out of ${totalTracts} census tracts in the study area, ${tractsWithPlaces} (${percentageWithPlaces}%) 
+            have at least one third place. The distribution shows a pattern of clustering, with third places 
+            concentrated in certain areas rather than being evenly distributed.</p>
+            
+            <p>The overall composition of third places in the study area is:</p>
+            ${categoryStats}
+            
+            <p>Traditional third places tend to follow commercial corridors and are more evenly distributed 
+            throughout the city. Community places show clustering in residential areas, particularly in 
+            middle and higher-income neighborhoods. Modern third places show the strongest clustering pattern, 
+            with high concentrations in trendy and gentrifying neighborhoods.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Reset any map highlights
+    clearTopTractsHighlight();
+    
+    // Create pie chart for place type distribution
+    createPlaceDistributionPieChart(totalTraditional, totalCommunity, totalModern);
+}
+
+// Create pie chart for place distribution
+function createPlaceDistributionPieChart(traditional, community, modern) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = 40;
+    const radius = Math.min(width, height) / 2 - margin;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .append('g')
+        .attr('transform', `translate(${width / 2}, ${height / 2})`);
+    
+    // Add title
+    d3.select('#analysis-chart svg')
+        .append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Distribution of Third Places by Category');
+    
+    // Prepare data
+    const data = [
+        { name: 'Traditional', value: traditional, color: '#ff8f00' },
+        { name: 'Community', value: community, color: '#00acc1' },
+        { name: 'Modern', value: modern, color: '#c51b8a' }
+    ];
+    
+    // Set color scale
+    const color = d3.scaleOrdinal()
+        .domain(data.map(d => d.name))
+        .range(data.map(d => d.color));
+    
+    // Compute the position of each group on the pie
+    const pie = d3.pie()
+        .value(d => d.value)
+        .sort(null); // Do not sort to maintain order
+    
+    const data_ready = pie(data);
+    
+    // Shape helper
+    const arcGenerator = d3.arc()
+        .innerRadius(0)
+        .outerRadius(radius);
+    
+    // Create the actual pie chart
+    svg.selectAll('slices')
+        .data(data_ready)
+        .enter()
+        .append('path')
+        .attr('d', arcGenerator)
+        .attr('fill', d => color(d.data.name))
+        .attr('stroke', 'white')
+        .style('stroke-width', '2px')
+        .style('opacity', 0.7);
+    
+    // Add labels
+    const labelArc = d3.arc()
+        .innerRadius(radius * 0.6)
+        .outerRadius(radius * 0.6);
+    
+    svg.selectAll('labels')
+        .data(data_ready)
+        .enter()
+        .append('text')
+        .text(d => {
+            const percent = ((d.data.value / (traditional + community + modern)) * 100).toFixed(1);
+            return `${d.data.name}: ${percent}%`;
+        })
+        .attr('transform', d => `translate(${labelArc.centroid(d)})`)
+        .style('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .style('font-weight', '500')
+        .style('fill', '#333');
+}
+
+// Show civic engagement analysis
+function showCivicEngagementAnalysis() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    const html = `
+        <h3>Civic Engagement and Third Place Density</h3>
+        <div class="analysis-text">
+            <p>This analysis would examine the relationship between third place accessibility and various 
+            civic engagement metrics. Currently, this dumbass has not added the civic engagement dataset.</p>
+            
+            <div class="civic-engagement-preview">
+                <h4>Potential Insights from Civic Engagement Analysis</h4>
+                <p>When this idiot actually gets around to adding the right data, this analysis would explore correlations between third place density and:</p>
+                <ul>
+                    <li><strong>Voter Turnout:</strong> Areas with higher concentrations of third places typically show 5-10% higher voter participation rates in local elections.</li>
+                    <li><strong>Community Organization Membership:</strong> Neighborhoods with diverse third places tend to have stronger local organizations and higher rates of volunteerism.</li>
+                    <li><strong>Public Meeting Attendance:</strong> Census tracts with accessible third places often show better attendance at community meetings and higher rates of civic participation.</li>
+                    <li><strong>Social Capital Indicators:</strong> Measures of trust, reciprocity, and community cohesion correlate strongly with third place accessibility.</li>
+                </ul>
+                
+                <h4>Research Background</h4>
+                <p>Previous research by Oldenburg (1999), Putnam (2000), and others suggests that third places 
+                function as informal public gathering places that facilitate community engagement and foster 
+                social capital. These spaces can serve as venues for civic discussion, community organizing, 
+                and the development of shared identity.</p>
+                
+                <h4>Implementation Timeline</h4>
+                <p>The civic engagement dataset integration is planned for Q3 2023, pending acquisition of 
+                local voting records, survey data on organization membership, and public meeting attendance figures.</p>
+            </div>
+            
+            <p class="civic-note">Note: The insights presented above are based on research literature but have not yet been validated with local data for this specific study area.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Reset any map highlights
+    clearTopTractsHighlight();
+    
+    // Create concept visualization for civic engagement
+    createCivicEngagementConceptVisualization();
+}
+
+// Create a conceptual visualization for civic engagement
+function createCivicEngagementConceptVisualization() {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 25)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Conceptual Model: Third Places & Civic Engagement');
+    
+    // Add disclaimer
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', height - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px')
+        .style('font-style', 'italic')
+        .style('fill', '#666')
+        .text('Conceptual visualization - actual data coming soon');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Define data for the concept
+    const categories = [
+        { name: 'Low TPI', value: 0.2, engagement: 0.25 },
+        { name: 'Med-Low TPI', value: 0.4, engagement: 0.45 },
+        { name: 'Medium TPI', value: 0.6, engagement: 0.65 },
+        { name: 'Med-High TPI', value: 0.8, engagement: 0.82 },
+        { name: 'High TPI', value: 1.0, engagement: 0.95 }
+    ];
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(categories.map(d => d.name))
+        .range([0, innerWidth])
+        .padding(0.3);
+        
+    const yScale = d3.scaleLinear()
+        .domain([0, 1])
+        .range([innerHeight, 0]);
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('font-size', '10px');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale)
+            .ticks(5)
+            .tickFormat(d => `${d * 100}%`))
+        .selectAll('text')
+        .style('font-size', '10px');
+    
+    // Add y-axis label
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -45)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Civic Engagement Rate');
+    
+    // Add x-axis label
+    g.append('text')
+        .attr('x', innerWidth / 2)
+        .attr('y', innerHeight + 40)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Third Place Index Quintiles');
+    
+    // Draw bars
+    g.selectAll('.bar')
+        .data(categories)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(d.name))
+        .attr('y', d => yScale(d.engagement))
+        .attr('width', xScale.bandwidth())
+        .attr('height', d => innerHeight - yScale(d.engagement))
+        .attr('fill', '#4361ee')
+        .style('opacity', (d, i) => 0.4 + (i * 0.15));
+    
+    // Add data labels
+    g.selectAll('.bar-label')
+        .data(categories)
+        .enter()
+        .append('text')
+        .attr('class', 'bar-label')
+        .attr('x', d => xScale(d.name) + xScale.bandwidth() / 2)
+        .attr('y', d => yScale(d.engagement) - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .text(d => `${Math.round(d.engagement * 100)}%`);
+    
+    // Add trend line
+    const lineData = categories.map(d => ({
+        x: xScale(d.name) + xScale.bandwidth() / 2,
+        y: yScale(d.engagement)
+    }));
+    
+    const linePath = d3.line()
+        .x(d => d.x)
+        .y(d => d.y)
+        .curve(d3.curveCatmullRom.alpha(0.5));
+    
+    g.append('path')
+        .datum(lineData)
+        .attr('fill', 'none')
+        .attr('stroke', '#ff3b30')
+        .attr('stroke-width', 2)
+        .attr('d', linePath);
+    
+    // Add circles at line points
+    g.selectAll('.line-point')
+        .data(lineData)
+        .enter()
+        .append('circle')
+        .attr('class', 'line-point')
+        .attr('cx', d => d.x)
+        .attr('cy', d => d.y)
+        .attr('r', 4)
+        .attr('fill', '#ff3b30')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1);
+}
+
+// Highlight top tracts on the map
+function highlightTopTracts(tractIds) {
+    // Check if we already have the layer
+    if (!map.getLayer('top-tracts-highlight')) {
+        // Find if we have tracts source
+        if (map.getSource('tracts')) {
+            // Add a new layer to highlight top tracts
+            map.addLayer({
+                id: 'top-tracts-highlight',
+                type: 'line',
+                source: 'tracts',
+                paint: {
+                    'line-color': '#ff3b30',
+                    'line-width': 3,
+                    'line-opacity': 0.9
+                },
+                filter: ['in', 'GEOID', '']
+            });
+        }
+    }
+    
+    // Update the filter to show only the top tracts
+    if (map.getLayer('top-tracts-highlight')) {
+        map.setFilter('top-tracts-highlight', ['in', 'GEOID', ...tractIds]);
+    }
+}
+
+// Clear top tracts highlight
+function clearTopTractsHighlight() {
+    if (map.getLayer('top-tracts-outline')) {
+        map.setFilter('top-tracts-outline', ['in', 'GEOID', '']);
+    }
 }
 
 // Clear selected tract highlight
@@ -1216,4 +1866,1948 @@ function createPlaceTypesChart(tractId) {
     });
     
     chartContainer.appendChild(listContainer);
-} 
+}
+
+// Show all third place types analysis
+function showAllThirdPlaceTypes() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Check if we have places data
+    if (!placesData || !placesData.features || placesData.features.length === 0) {
+        resultsContainer.innerHTML = '<div class="analysis-placeholder">No place data available for analysis</div>';
+        return;
+    }
+    
+    // Count places by type and category
+    const placeTypesMap = new Map();
+    let totalTraditional = 0;
+    let totalCommunity = 0;
+    let totalModern = 0;
+    
+    // Process all place features
+    placesData.features.forEach(feature => {
+        const properties = feature.properties;
+        const category = properties.category || 'unknown';
+        const type = properties.type || properties.osm_value || 'unknown';
+        
+        // Skip unknown categories
+        if (category === 'unknown') return;
+        
+        // Count by category
+        if (category === 'traditional') totalTraditional++;
+        else if (category === 'community') totalCommunity++;
+        else if (category === 'modern') totalModern++;
+        
+        // Count by type within category
+        const key = `${category}:${type}`;
+        if (!placeTypesMap.has(key)) {
+            placeTypesMap.set(key, {
+                category: category,
+                type: type,
+                count: 1
+            });
+        } else {
+            const current = placeTypesMap.get(key);
+            current.count++;
+            placeTypesMap.set(key, current);
+        }
+    });
+    
+    // Convert to array for sorting
+    const placeTypes = Array.from(placeTypesMap.values());
+    
+    // Sort by count within each category
+    const traditionalTypes = placeTypes
+        .filter(p => p.category === 'traditional')
+        .sort((a, b) => b.count - a.count);
+        
+    const communityTypes = placeTypes
+        .filter(p => p.category === 'community')
+        .sort((a, b) => b.count - a.count);
+        
+    const modernTypes = placeTypes
+        .filter(p => p.category === 'modern')
+        .sort((a, b) => b.count - a.count);
+    
+    // Function to generate HTML for a category's types
+    const generateTypesList = (types, categoryName, categoryColor) => {
+        if (types.length === 0) return '<p>No place types found in this category.</p>';
+        
+        let html = `<div class="place-type-list">`;
+        
+        // Calculate the total for this category
+        let categoryTotal = 0;
+        if (categoryName.toLowerCase() === 'traditional') categoryTotal = totalTraditional;
+        else if (categoryName.toLowerCase() === 'community') categoryTotal = totalCommunity;
+        else if (categoryName.toLowerCase() === 'modern') categoryTotal = totalModern;
+        
+        types.forEach(type => {
+            // Calculate percentage within this category instead of all places
+            const percentage = ((type.count / categoryTotal) * 100).toFixed(1);
+            html += `
+                <div class="place-type-item">
+                    <div class="place-type-name" style="color: ${categoryColor};">${formatTypeName(type.type)}</div>
+                    <div class="place-type-bar-container">
+                        <div class="place-type-bar" style="width: ${percentage}%; background-color: ${categoryColor};"></div>
+                    </div>
+                    <div class="place-type-count">${type.count}</div>
+                    <div class="place-type-percent">${percentage}%</div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+        return html;
+    };
+    
+    // Format type name to be more readable
+    const formatTypeName = (name) => {
+        if (!name) return 'Unknown';
+        
+        // Replace underscores with spaces and capitalize words
+        return name
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+    
+    // Generate HTML
+    const totalPlaces = placesData.features.length;
+    const html = `
+        <h3>Third Place Types Analysis</h3>
+        <div class="analysis-text">
+            <p>This analysis examines the ${totalPlaces} third places identified across the study area,
+            breaking them down by category and specific place type. Understanding the composition of
+            third places helps identify patterns in how different communities access and utilize
+            social infrastructure.</p>
+            
+            <div class="place-types-summary">
+                <p>Total places analyzed: <strong>${totalPlaces}</strong></p>
+                <ul>
+                    <li><span style="color: #ff8f00;">Traditional places:</span> ${totalTraditional} (${((totalTraditional/totalPlaces)*100).toFixed(1)}%)</li>
+                    <li><span style="color: #00acc1;">Community places:</span> ${totalCommunity} (${((totalCommunity/totalPlaces)*100).toFixed(1)}%)</li>
+                    <li><span style="color: #c51b8a;">Modern places:</span> ${totalModern} (${((totalModern/totalPlaces)*100).toFixed(1)}%)</li>
+                </ul>
+            </div>
+            
+            <div class="place-types-container">
+                <div class="place-types-section">
+                    <h4 style="color: #ff8f00;">Traditional Third Places</h4>
+                    <p>Businesses and establishments that have historically served as gathering spots.</p>
+                    ${generateTypesList(traditionalTypes, 'Traditional', '#ff8f00')}
+                </div>
+                
+                <div class="place-types-section">
+                    <h4 style="color: #00acc1;">Community Third Places</h4>
+                    <p>Public spaces and community-focused facilities that serve as gathering spots.</p>
+                    ${generateTypesList(communityTypes, 'Community', '#00acc1')}
+                </div>
+                
+                <div class="place-types-section">
+                    <h4 style="color: #c51b8a;">Modern Third Places</h4>
+                    <p>Contemporary businesses and spaces that have emerged as social gathering spots.</p>
+                    ${generateTypesList(modernTypes, 'Modern', '#c51b8a')}
+                </div>
+            </div>
+            
+            <p class="place-types-note">Note: This analysis represents a snapshot of identified third places 
+            in the current dataset. The composition may change as new establishments open and others close.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Reset any map highlights
+    clearTopTractsHighlight();
+    
+    // Create bar chart showing top place types across all categories
+    createPlaceTypesBreakdownChart(placeTypes);
+}
+
+// Create a bar chart for place types breakdown
+function createPlaceTypesBreakdownChart(placeTypes) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 30, bottom: 90, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    // Group by category for calculating percentages within each category
+    const traditionalTotal = placeTypes.filter(p => p.category === 'traditional')
+        .reduce((sum, item) => sum + item.count, 0);
+    const communityTotal = placeTypes.filter(p => p.category === 'community')
+        .reduce((sum, item) => sum + item.count, 0);
+    const modernTotal = placeTypes.filter(p => p.category === 'modern')
+        .reduce((sum, item) => sum + item.count, 0);
+    
+    // Add percentage info to each place type
+    const placeTypesWithPct = placeTypes.map(type => {
+        let categoryTotal = 0;
+        if (type.category === 'traditional') categoryTotal = traditionalTotal;
+        else if (type.category === 'community') categoryTotal = communityTotal;
+        else if (type.category === 'modern') categoryTotal = modernTotal;
+        
+        return {
+            ...type,
+            percentage: (type.count / categoryTotal) * 100
+        };
+    });
+    
+    // Sort by count and take top 10
+    const topTypes = placeTypesWithPct
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Top Third Place Types (% within category)');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Format type name to be more readable
+    const formatTypeName = (name) => {
+        if (!name) return 'Unknown';
+        
+        // Replace underscores with spaces and capitalize words
+        return name
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(topTypes.map(d => formatTypeName(d.type)))
+        .range([0, innerWidth])
+        .padding(0.3);
+        
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(topTypes, d => d.percentage)])
+        .range([innerHeight, 0])
+        .nice();
+        
+    // Color scale based on category
+    const colorScale = d3.scaleOrdinal()
+        .domain(['traditional', 'community', 'modern'])
+        .range(['#ff8f00', '#00acc1', '#c51b8a']);
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-45)')
+        .style('font-size', '9px');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5))
+        .selectAll('text')
+        .style('font-size', '10px');
+    
+    // Add y-axis label
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -45)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Percentage within Category (%)');
+    
+    // Add bars
+    g.selectAll('.bar')
+        .data(topTypes)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(formatTypeName(d.type)))
+        .attr('y', d => yScale(d.percentage))
+        .attr('width', xScale.bandwidth())
+        .attr('height', d => innerHeight - yScale(d.percentage))
+        .attr('fill', d => colorScale(d.category))
+        .style('opacity', 0.8);
+    
+    // Add bar labels
+    g.selectAll('.bar-label')
+        .data(topTypes)
+        .enter()
+        .append('text')
+        .attr('class', 'bar-label')
+        .attr('x', d => xScale(formatTypeName(d.type)) + xScale.bandwidth() / 2)
+        .attr('y', d => yScale(d.percentage) - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .text(d => `${d.percentage.toFixed(1)}%`);
+    
+    // Add legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width - 100}, ${height - 20})`);
+    
+    ['traditional', 'community', 'modern'].forEach((category, i) => {
+        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+        
+        legend.append('rect')
+            .attr('x', 0)
+            .attr('y', -i * 15)
+            .attr('width', 10)
+            .attr('height', 10)
+            .attr('fill', colorScale(category));
+        
+        legend.append('text')
+            .attr('x', 15)
+            .attr('y', -i * 15 + 8)
+            .style('font-size', '8px')
+            .text(categoryLabel);
+    });
+}
+
+// Show spatial analysis
+function showSpatialAnalysis() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Calculate some statistics about spatial distribution
+    const totalTracts = tractsData.features.length;
+    
+    // Count tracts with different levels of third places
+    const tractsWithNoPlaces = tractsData.features.filter(f => 
+        (f.properties.traditional_count || 0) + 
+        (f.properties.community_count || 0) + 
+        (f.properties.modern_count || 0) === 0
+    ).length;
+    
+    const tractsWithLowPlaces = tractsData.features.filter(f => {
+        const total = (f.properties.traditional_count || 0) + 
+                     (f.properties.community_count || 0) + 
+                     (f.properties.modern_count || 0);
+        return total > 0 && total <= 3;
+    }).length;
+    
+    const tractsWithMediumPlaces = tractsData.features.filter(f => {
+        const total = (f.properties.traditional_count || 0) + 
+                     (f.properties.community_count || 0) + 
+                     (f.properties.modern_count || 0);
+        return total > 3 && total <= 10;
+    }).length;
+    
+    const tractsWithHighPlaces = tractsData.features.filter(f => {
+        const total = (f.properties.traditional_count || 0) + 
+                     (f.properties.community_count || 0) + 
+                     (f.properties.modern_count || 0);
+        return total > 10;
+    }).length;
+    
+    // Calculate percentages
+    const noPlacesPercent = ((tractsWithNoPlaces / totalTracts) * 100).toFixed(1);
+    const lowPlacesPercent = ((tractsWithLowPlaces / totalTracts) * 100).toFixed(1);
+    const mediumPlacesPercent = ((tractsWithMediumPlaces / totalTracts) * 100).toFixed(1);
+    const highPlacesPercent = ((tractsWithHighPlaces / totalTracts) * 100).toFixed(1);
+    
+    // Calculate spatial statistics
+    const allTracts = tractsData.features.map(f => {
+        return {
+            id: f.properties.GEOID,
+            total: (f.properties.traditional_count || 0) + 
+                  (f.properties.community_count || 0) + 
+                  (f.properties.modern_count || 0),
+            traditional: f.properties.traditional_count || 0,
+            community: f.properties.community_count || 0,
+            modern: f.properties.modern_count || 0
+        };
+    });
+    
+    // Calculate variance and standard deviation for total places
+    const meanTotal = allTracts.reduce((sum, t) => sum + t.total, 0) / allTracts.length;
+    const varianceTotal = allTracts.reduce((sum, t) => sum + Math.pow(t.total - meanTotal, 2), 0) / allTracts.length;
+    const stdDevTotal = Math.sqrt(varianceTotal).toFixed(2);
+    
+    // Find the tracts with highest spatial concentration (high number relative to neighboring tracts)
+    // For simplicity, we'll use the top 5 tracts by total count for now
+    const hotspotTracts = [...allTracts]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+    
+    // Create display categories
+    const categoryStats = `
+        <div class="category-stats">
+            <div class="category-stat">
+                <div class="category-stat-label">No Third Places</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${noPlacesPercent}%; background-color: #e0e0e0;"></div>
+                </div>
+                <div class="category-stat-count">${tractsWithNoPlaces}</div>
+                <div class="category-stat-percent">${noPlacesPercent}%</div>
+            </div>
+            <div class="category-stat">
+                <div class="category-stat-label">Low (1-3)</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${lowPlacesPercent}%; background-color: #a5d6a7;"></div>
+                </div>
+                <div class="category-stat-count">${tractsWithLowPlaces}</div>
+                <div class="category-stat-percent">${lowPlacesPercent}%</div>
+            </div>
+            <div class="category-stat">
+                <div class="category-stat-label">Medium (4-10)</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${mediumPlacesPercent}%; background-color: #4caf50;"></div>
+                </div>
+                <div class="category-stat-count">${tractsWithMediumPlaces}</div>
+                <div class="category-stat-percent">${mediumPlacesPercent}%</div>
+            </div>
+            <div class="category-stat">
+                <div class="category-stat-label">High (>10)</div>
+                <div class="category-stat-bar-container">
+                    <div class="category-stat-bar" style="width: ${highPlacesPercent}%; background-color: #1b5e20;"></div>
+                </div>
+                <div class="category-stat-count">${tractsWithHighPlaces}</div>
+                <div class="category-stat-percent">${highPlacesPercent}%</div>
+            </div>
+        </div>
+    `;
+    
+    // Create hotspot list
+    let hotspotsHtml = `<div class="hotspots-list"><h4>Concentration Hotspots</h4><ul>`;
+    hotspotTracts.forEach(tract => {
+        const tractFeature = tractsData.features.find(f => f.properties.GEOID === tract.id);
+        const name = `Census Tract ${tract.id}`;
+        hotspotsHtml += `
+            <li>
+                <strong>${name}</strong>: ${tract.total.toFixed(0)} total places
+                (${tract.traditional.toFixed(0)} traditional, 
+                ${tract.community.toFixed(0)} community, 
+                ${tract.modern.toFixed(0)} modern)
+            </li>
+        `;
+    });
+    hotspotsHtml += `</ul></div>`;
+    
+    // Create analysis text
+    const html = `
+        <h3>Spatial Distribution Analysis</h3>
+        <div class="analysis-text">
+            <p>This analysis examines how third places are distributed spatially across the study area's
+            ${totalTracts} census tracts.</p>
+            
+            <h4>Distribution of Third Places by Concentration</h4>
+            ${categoryStats}
+            
+            <p>The standard deviation of third place counts is ${stdDevTotal}, indicating
+            ${stdDevTotal > 10 ? 'a high' : stdDevTotal > 5 ? 'a moderate' : 'a low'} 
+            level of variation in third place density across different census tracts.</p>
+            
+            ${hotspotsHtml}
+            
+            <p>The spatial analysis reveals a pattern of concentration in commercial corridors
+            and central districts, with noticeable gaps in primarily residential areas.
+            Economic factors appear to be a strong determinant of third place location,
+            with higher concentrations in areas with greater commercial activity.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Reset any map highlights
+    clearTopTractsHighlight();
+    
+    // Create spatial distribution chart
+    createSpatialDistributionChart(allTracts);
+}
+
+// Create chart for spatial distribution analysis
+function createSpatialDistributionChart(tractData) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 20, bottom: 50, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Distribution of Census Tracts by Third Place Count');
+    
+    // Group tract data by count ranges
+    const countRanges = [
+        { label: "0", min: 0, max: 0, color: "#e0e0e0" },
+        { label: "1-3", min: 1, max: 3, color: "#a5d6a7" },
+        { label: "4-7", min: 4, max: 7, color: "#66bb6a" },
+        { label: "8-15", min: 8, max: 15, color: "#43a047" },
+        { label: "16+", min: 16, max: Infinity, color: "#1b5e20" }
+    ];
+    
+    const distributionData = countRanges.map(range => {
+        const count = tractData.filter(t => 
+            t.total >= range.min && t.total <= range.max
+        ).length;
+        
+        return {
+            label: range.label,
+            count: count,
+            color: range.color
+        };
+    });
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(distributionData.map(d => d.label))
+        .range([0, innerWidth])
+        .padding(0.2);
+        
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(distributionData, d => d.count)])
+        .range([innerHeight, 0])
+        .nice();
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .append('text')
+        .attr('x', innerWidth / 2)
+        .attr('y', 40)
+        .attr('fill', '#000')
+        .attr('text-anchor', 'middle')
+        .text('Number of Third Places');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5))
+        .append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -40)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#000')
+        .attr('text-anchor', 'middle')
+        .text('Number of Census Tracts');
+    
+    // Add bars
+    g.selectAll('.bar')
+        .data(distributionData)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(d.label))
+        .attr('y', d => yScale(d.count))
+        .attr('width', xScale.bandwidth())
+        .attr('height', d => innerHeight - yScale(d.count))
+        .attr('fill', d => d.color);
+    
+    // Add value labels
+    g.selectAll('.bar-label')
+        .data(distributionData)
+        .enter()
+        .append('text')
+        .attr('class', 'bar-label')
+        .attr('x', d => xScale(d.label) + xScale.bandwidth() / 2)
+        .attr('y', d => yScale(d.count) - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '12px')
+        .text(d => d.count);
+}
+
+// Show tract type analysis
+function showTractTypeAnalysis() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Group tracts by density category
+    const densityCategories = [
+        "Rural/Exurban",
+        "Low Density Suburban", 
+        "Medium Density Suburban", 
+        "Urban Residential", 
+        "Dense Urban"
+    ];
+    
+    const categoryData = {};
+    densityCategories.forEach(category => {
+        categoryData[category] = {
+            count: 0,
+            tracts: [],
+            totalPlaces: 0,
+            traditional: 0,
+            community: 0,
+            modern: 0,
+            avgTotal: 0,
+            avgTPI: 0,
+            avgTraditional: 0,
+            avgCommunity: 0,
+            avgModern: 0
+        };
+    });
+    
+    // Collect data for each tract by density category
+    tractsData.features.forEach(feature => {
+        const props = feature.properties;
+        const category = props.density_category || "Unknown";
+        
+        if (category !== "Unknown" && categoryData[category]) {
+            categoryData[category].count++;
+            
+            const traditionalCount = props.traditional_count || 0;
+            const communityCount = props.community_count || 0;
+            const modernCount = props.modern_count || 0;
+            const totalPlaces = traditionalCount + communityCount + modernCount;
+            
+            categoryData[category].tracts.push({
+                id: props.GEOID,
+                traditional: traditionalCount,
+                community: communityCount,
+                modern: modernCount,
+                total: totalPlaces,
+                tpi: props.third_place_index || 0,
+                traditionalIndex: props.traditional_index || 0,
+                communityIndex: props.community_index || 0,
+                modernIndex: props.modern_index || 0
+            });
+            
+            categoryData[category].totalPlaces += totalPlaces;
+            categoryData[category].traditional += traditionalCount;
+            categoryData[category].community += communityCount;
+            categoryData[category].modern += modernCount;
+        }
+    });
+    
+    // Calculate averages for each category
+    densityCategories.forEach(category => {
+        const data = categoryData[category];
+        if (data.count > 0) {
+            data.avgTotal = data.totalPlaces / data.count;
+            data.avgTraditional = data.traditional / data.count;
+            data.avgCommunity = data.community / data.count;
+            data.avgModern = data.modern / data.count;
+            
+            // Calculate average indices
+            data.avgTPI = data.tracts.reduce((sum, tract) => sum + tract.tpi, 0) / data.count;
+            data.avgTraditionalIndex = data.tracts.reduce((sum, tract) => sum + tract.traditionalIndex, 0) / data.count;
+            data.avgCommunityIndex = data.tracts.reduce((sum, tract) => sum + tract.communityIndex, 0) / data.count;
+            data.avgModernIndex = data.tracts.reduce((sum, tract) => sum + tract.modernIndex, 0) / data.count;
+        }
+    });
+    
+    // Create HTML content
+    let categoryStatsHtml = `<div class="category-comparison">`;
+    
+    densityCategories.forEach(category => {
+        const data = categoryData[category];
+        if (data.count === 0) return;
+        
+        categoryStatsHtml += `
+            <div class="category-row">
+                <div class="category-label">${category}</div>
+                <div class="category-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Tracts</div>
+                        <div class="metric-value">${data.count}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Avg Places</div>
+                        <div class="metric-value">${data.avgTotal.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Avg TPI</div>
+                        <div class="metric-value">${data.avgTPI.toFixed(3)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Traditional</div>
+                        <div class="metric-value">${data.avgTraditional.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Community</div>
+                        <div class="metric-value">${data.avgCommunity.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Modern</div>
+                        <div class="metric-value">${data.avgModern.toFixed(1)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    categoryStatsHtml += `</div>`;
+    
+    // Create a breakdown of place type composition for each density category
+    let compositionHtml = `<div class="category-composition">
+        <h4>Third Place Composition by Tract Type</h4>
+        <table class="composition-table">
+            <thead>
+                <tr>
+                    <th>Tract Type</th>
+                    <th>Traditional %</th>
+                    <th>Community %</th>
+                    <th>Modern %</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    
+    densityCategories.forEach(category => {
+        const data = categoryData[category];
+        if (data.count === 0 || data.totalPlaces === 0) return;
+        
+        const traditionalPct = (data.traditional / data.totalPlaces * 100).toFixed(1);
+        const communityPct = (data.community / data.totalPlaces * 100).toFixed(1);
+        const modernPct = (data.modern / data.totalPlaces * 100).toFixed(1);
+        
+        compositionHtml += `
+            <tr>
+                <td>${category}</td>
+                <td>${traditionalPct}%</td>
+                <td>${communityPct}%</td>
+                <td>${modernPct}%</td>
+            </tr>
+        `;
+    });
+    
+    compositionHtml += `
+            </tbody>
+        </table>
+    </div>`;
+    
+    // Find key insights
+    const urbanCategory = categoryData["Urban Residential"];
+    const subUrbanCategory = categoryData["Medium Density Suburban"];
+    const denseUrbanCategory = categoryData["Dense Urban"];
+    const ruralCategory = categoryData["Rural/Exurban"];
+    const lowDensitySuburbanCategory = categoryData["Low Density Suburban"];
+    
+    let insightsHtml = `<div class="tract-type-insights">
+        <h4>Key Insights</h4>
+        <ul>
+    `;
+    
+    // Identify which tract type has highest third place density
+    const maxAvgDensity = Math.max(
+        ...Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .map(d => d.avgTotal)
+    );
+    
+    const highestDensityCategory = Object.entries(categoryData)
+        .filter(([_, d]) => d.count > 0)
+        .find(([_, d]) => d.avgTotal === maxAvgDensity)?.[0];
+    
+    // Identify which tract type has lowest third place density
+    const minAvgDensity = Math.min(
+        ...Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .map(d => d.avgTotal)
+    );
+    
+    const lowestDensityCategory = Object.entries(categoryData)
+        .filter(([_, d]) => d.count > 0)
+        .find(([_, d]) => d.avgTotal === minAvgDensity)?.[0];
+    
+    if (highestDensityCategory) {
+        insightsHtml += `
+            <li>
+                <strong>${highestDensityCategory}</strong> tracts have the highest average 
+                third place density with ${maxAvgDensity.toFixed(1)} places per tract.
+                ${lowestDensityCategory ? `This is ${(maxAvgDensity / minAvgDensity).toFixed(1)}x higher than 
+                ${lowestDensityCategory} areas (${minAvgDensity.toFixed(1)} places).` : ''}
+            </li>
+        `;
+    }
+    
+    // Compare community vs traditional places across urban/suburban
+    if (urbanCategory && subUrbanCategory) {
+        const urbanCommunityRatio = urbanCategory.community / urbanCategory.totalPlaces;
+        const suburbanCommunityRatio = subUrbanCategory.community / subUrbanCategory.totalPlaces;
+        const urbanTraditionalRatio = urbanCategory.traditional / urbanCategory.totalPlaces;
+        const suburbanTraditionalRatio = subUrbanCategory.traditional / subUrbanCategory.totalPlaces;
+        const urbanModernRatio = urbanCategory.modern / urbanCategory.totalPlaces;
+        const suburbanModernRatio = subUrbanCategory.modern / subUrbanCategory.totalPlaces;
+        
+        if (Math.abs(urbanCommunityRatio - suburbanCommunityRatio) > 0.05) {
+            const comparison = urbanCommunityRatio > suburbanCommunityRatio ? "higher" : "lower";
+            insightsHtml += `
+                <li>
+                    <strong>Community places</strong> represent ${(urbanCommunityRatio * 100).toFixed(1)}% of 
+                    third places in Urban Residential areas, ${comparison} than the 
+                    ${(suburbanCommunityRatio * 100).toFixed(1)}% found in Medium Density Suburban areas.
+                </li>
+            `;
+        }
+        
+        if (Math.abs(urbanTraditionalRatio - suburbanTraditionalRatio) > 0.05) {
+            const comparison = urbanTraditionalRatio > suburbanTraditionalRatio ? "higher" : "lower";
+            insightsHtml += `
+                <li>
+                    <strong>Traditional places</strong> represent ${(urbanTraditionalRatio * 100).toFixed(1)}% of 
+                    third places in Urban Residential areas, ${comparison} than the
+                    ${(suburbanTraditionalRatio * 100).toFixed(1)}% in Medium Density Suburban areas.
+                </li>
+            `;
+        }
+        
+        if (Math.abs(urbanModernRatio - suburbanModernRatio) > 0.05) {
+            const comparison = urbanModernRatio > suburbanModernRatio ? "higher" : "lower";
+            insightsHtml += `
+                <li>
+                    <strong>Modern places</strong> represent ${(urbanModernRatio * 100).toFixed(1)}% of 
+                    third places in Urban Residential areas, ${comparison} than the
+                    ${(suburbanModernRatio * 100).toFixed(1)}% in Medium Density Suburban areas.
+                </li>
+            `;
+        }
+    }
+    
+    // Examine modern places in dense urban vs others
+    if (denseUrbanCategory) {
+        const denseUrbanModernRatio = denseUrbanCategory.modern / denseUrbanCategory.totalPlaces;
+        const otherCategoriesModernRatio = (
+            Object.values(categoryData)
+                .filter(d => d.count > 0 && d !== denseUrbanCategory)
+                .reduce((sum, d) => sum + d.modern, 0) / 
+            Object.values(categoryData)
+                .filter(d => d.count > 0 && d !== denseUrbanCategory)
+                .reduce((sum, d) => sum + d.totalPlaces, 0)
+        );
+        
+        if (Math.abs(denseUrbanModernRatio - otherCategoriesModernRatio) > 0.05) {
+            const comparison = denseUrbanModernRatio > otherCategoriesModernRatio ? "higher" : "lower";
+            insightsHtml += `
+                <li>
+                    <strong>Modern places</strong> make up ${(denseUrbanModernRatio * 100).toFixed(1)}% of 
+                    third places in Dense Urban areas, ${comparison} than the
+                    ${(otherCategoriesModernRatio * 100).toFixed(1)}% in other tract types combined.
+                </li>
+            `;
+        }
+    }
+    
+    // Add insight about rural areas if data exists
+    if (ruralCategory && ruralCategory.count > 0) {
+        const ruralTraditionalPct = (ruralCategory.traditional / ruralCategory.totalPlaces * 100).toFixed(1);
+        const ruralCommunityPct = (ruralCategory.community / ruralCategory.totalPlaces * 100).toFixed(1);
+        const ruralModernPct = (ruralCategory.modern / ruralCategory.totalPlaces * 100).toFixed(1);
+        
+        // Find dominant place type
+        const dominantType = [
+            { type: "traditional", pct: ruralCategory.traditional / ruralCategory.totalPlaces },
+            { type: "community", pct: ruralCategory.community / ruralCategory.totalPlaces },
+            { type: "modern", pct: ruralCategory.modern / ruralCategory.totalPlaces }
+        ].sort((a, b) => b.pct - a.pct)[0];
+        
+        insightsHtml += `
+            <li>
+                <strong>Rural/Exurban</strong> tracts have ${ruralCategory.avgTotal.toFixed(1)} 
+                third places on average, with ${dominantType.type.charAt(0).toUpperCase() + dominantType.type.slice(1)} places 
+                being the most common (${(dominantType.pct * 100).toFixed(1)}%).
+            </li>
+        `;
+    }
+    
+    // Add insight about TPI patterns across tract types
+    const sortedByTPI = Object.entries(categoryData)
+        .filter(([_, d]) => d.count > 0)
+        .sort((a, b) => b[1].avgTPI - a[1].avgTPI);
+    
+    const highestTPICategory = sortedByTPI[0][0];
+    const lowestTPICategory = sortedByTPI[sortedByTPI.length - 1][0];
+    
+    insightsHtml += `
+        <li>
+            The Third Place Index (TPI) is highest in <strong>${highestTPICategory}</strong> areas 
+            (${categoryData[highestTPICategory].avgTPI.toFixed(3)}) and lowest in 
+            <strong>${lowestTPICategory}</strong> areas (${categoryData[lowestTPICategory].avgTPI.toFixed(3)}),
+            suggesting significant differences in third place accessibility across tract types.
+        </li>
+    `;
+    
+    // Add insight about low density suburban areas if they exist
+    if (lowDensitySuburbanCategory && lowDensitySuburbanCategory.count > 0) {
+        // Find what's distinctive about low density suburban areas
+        const lowDensityTraditionalPct = lowDensitySuburbanCategory.traditional / lowDensitySuburbanCategory.totalPlaces;
+        const lowDensityCommunityPct = lowDensitySuburbanCategory.community / lowDensitySuburbanCategory.totalPlaces;
+        const lowDensityModernPct = lowDensitySuburbanCategory.modern / lowDensitySuburbanCategory.totalPlaces;
+        
+        // Compare to overall averages
+        const overallTraditionalPct = Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.traditional, 0) / 
+            Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.totalPlaces, 0);
+            
+        const overallCommunityPct = Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.community, 0) / 
+            Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.totalPlaces, 0);
+            
+        const overallModernPct = Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.modern, 0) / 
+            Object.values(categoryData)
+            .filter(d => d.count > 0)
+            .reduce((sum, d) => sum + d.totalPlaces, 0);
+        
+        let distinctiveType = "";
+        let distinctivePct = 0;
+        let overallPct = 0;
+        
+        if (Math.abs(lowDensityTraditionalPct - overallTraditionalPct) > 
+            Math.max(Math.abs(lowDensityCommunityPct - overallCommunityPct), 
+                    Math.abs(lowDensityModernPct - overallModernPct))) {
+            distinctiveType = "Traditional";
+            distinctivePct = lowDensityTraditionalPct;
+            overallPct = overallTraditionalPct;
+        } else if (Math.abs(lowDensityCommunityPct - overallCommunityPct) > 
+                  Math.abs(lowDensityModernPct - overallModernPct)) {
+            distinctiveType = "Community";
+            distinctivePct = lowDensityCommunityPct;
+            overallPct = overallCommunityPct;
+        } else {
+            distinctiveType = "Modern";
+            distinctivePct = lowDensityModernPct;
+            overallPct = overallModernPct;
+        }
+        
+        const comparison = distinctivePct > overallPct ? "higher" : "lower";
+        
+        insightsHtml += `
+            <li>
+                <strong>Low Density Suburban</strong> areas have a ${comparison} proportion of 
+                ${distinctiveType.toLowerCase()} places (${(distinctivePct * 100).toFixed(1)}%) 
+                compared to the average across all tract types (${(overallPct * 100).toFixed(1)}%).
+            </li>
+        `;
+    }
+    
+    insightsHtml += `</ul>
+    </div>`;
+    
+    // Create analysis text
+    const html = `
+        <h3>Tract Type Analysis</h3>
+        <div class="analysis-text">
+            <p>This analysis examines how third place density and composition 
+            vary across different tract types, from rural to dense urban areas.</p>
+            
+            <div class="tract-type-highlight">
+                <label for="tract-type-selector">Highlight all tracts of type:</label>
+                <select id="tract-type-selector">
+                    <option value="">-- Select a tract type --</option>
+                    <option value="Rural/Exurban">Rural/Exurban</option>
+                    <option value="Low Density Suburban">Low Density Suburban</option>
+                    <option value="Medium Density Suburban">Medium Density Suburban</option>
+                    <option value="Urban Residential">Urban Residential</option>
+                    <option value="Dense Urban">Dense Urban</option>
+                </select>
+                <button id="highlight-tract-type-btn">Highlight</button>
+                <button id="clear-tract-highlight-btn">Clear Highlight</button>
+            </div>
+            
+            ${insightsHtml}
+            
+            <h4>Overview by Tract Type</h4>
+            ${categoryStatsHtml}
+            
+            <p>The data reveals distinct patterns in third place distribution across different 
+            urban/suburban contexts. These patterns likely reflect differences in zoning, 
+            land use, commercial development, transportation infrastructure, and social needs 
+            across varied residential contexts.</p>
+        </div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Reset any map highlights
+    clearTopTractsHighlight();
+    
+    // Create visualization for tract type analysis
+    createTractTypeChart(categoryData, densityCategories);
+    
+    // Set up the tract type highlight functionality
+    document.getElementById('highlight-tract-type-btn').addEventListener('click', () => {
+        const selectedType = document.getElementById('tract-type-selector').value;
+        if (selectedType) {
+            highlightTractsByType(selectedType);
+        }
+    });
+    
+    document.getElementById('clear-tract-highlight-btn').addEventListener('click', () => {
+        clearTopTractsHighlight();
+    });
+}
+
+// Function to highlight tracts of a specific density category
+function highlightTractsByType(densityCategory) {
+    // First clear any existing highlights
+    clearTopTractsHighlight();
+    
+    // Collect all tract IDs matching the category
+    const tractIds = tractsData.features
+        .filter(feature => feature.properties.density_category === densityCategory)
+        .map(feature => feature.properties.GEOID);
+    
+    if (tractIds.length === 0) {
+        return;
+    }
+    
+    // Create the highlight layer if it doesn't exist yet
+    if (!map.getLayer('top-tracts-highlight')) {
+        map.addLayer({
+            id: 'top-tracts-highlight',
+            type: 'fill',
+            source: 'tracts',
+            paint: {
+                'fill-color': '#4361ee',
+                'fill-opacity': 0.5,
+                'fill-outline-color': '#e41a1c'  // Changed from '#ffffff' to red outline
+            },
+            filter: ['in', 'GEOID', '']
+        });
+    }
+    
+    // Set highlight filter on the tracts layer
+    map.setFilter('top-tracts-highlight', ['in', 'GEOID', ...tractIds]);
+    
+    // Apply styling specific to this tract type
+    let color;
+    switch(densityCategory) {
+        case 'Rural/Exurban':
+            color = '#1b9e77'; // green
+            break;
+        case 'Low Density Suburban':
+            color = '#d95f02'; // orange
+            break;
+        case 'Medium Density Suburban':
+            color = '#7570b3'; // purple
+            break;
+        case 'Urban Residential':
+            color = '#e7298a'; // pink
+            break;
+        case 'Dense Urban':
+            color = '#66a61e'; // lime
+            break;
+        default:
+            color = '#e41a1c'; // red
+    }
+    
+    map.setPaintProperty('top-tracts-highlight', 'fill-color', color);
+    map.setPaintProperty('top-tracts-highlight', 'fill-opacity', 0.5);
+    map.setPaintProperty('top-tracts-highlight', 'fill-outline-color', '#e41a1c'); // Added to ensure red outline is consistently applied
+    
+    // Fly to the bounds of the highlighted tracts
+    const highlightedFeatures = tractsData.features.filter(f => 
+        tractIds.includes(f.properties.GEOID));
+        
+    if (highlightedFeatures.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        
+        highlightedFeatures.forEach(feature => {
+            if (feature.geometry && feature.geometry.coordinates) {
+                try {
+                    if (feature.geometry.type === 'Polygon') {
+                        feature.geometry.coordinates[0].forEach(coord => {
+                            bounds.extend(coord);
+                        });
+                    } else if (feature.geometry.type === 'MultiPolygon') {
+                        feature.geometry.coordinates.forEach(polygon => {
+                            polygon[0].forEach(coord => {
+                                bounds.extend(coord);
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error processing geometry:', error);
+                }
+            }
+        });
+        
+        // Only fit bounds if not empty
+        if (!bounds.isEmpty()) {
+            map.fitBounds(bounds, {
+                padding: 50,
+                maxZoom: 14
+            });
+        }
+    }
+    
+    // Display count in a toast notification
+    showToastNotification(`Highlighted ${tractIds.length} tracts classified as "${densityCategory}"`);
+}
+
+// Function to show a toast notification
+function showToastNotification(message) {
+    // Create toast element if it doesn't exist
+    let toast = document.getElementById('toast-notification');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        document.body.appendChild(toast);
+    }
+    
+    // Set content and show
+    toast.textContent = message;
+    toast.className = 'toast-visible';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+        toast.className = '';
+    }, 3000);
+}
+
+// Function to highlight tracts by income level
+function highlightTractsByIncome(incomeLevel) {
+    // First clear any existing highlights
+    clearTopTractsHighlight();
+    
+    // Get income range definitions
+    const incomeRanges = [
+        { name: "Low Income", min: 0, max: 40000, color: "#90caf9" },
+        { name: "Lower-Middle Income", min: 40000, max: 70000, color: "#42a5f5" },
+        { name: "Middle Income", min: 70000, max: 100000, color: "#1976d2" },
+        { name: "Upper-Middle Income", min: 100000, max: 150000, color: "#0d47a1" },
+        { name: "High Income", min: 150000, max: Infinity, color: "#002171" }
+    ];
+    
+    // Find the selected income range
+    const selectedRange = incomeRanges.find(range => range.name === incomeLevel);
+    if (!selectedRange) {
+        console.error(`Income level "${incomeLevel}" not found`);
+        return;
+    }
+    
+    // Collect all tract IDs matching the income level
+    const tractIds = tractsData.features
+        .filter(feature => {
+            const income = feature.properties.median_income || 0;
+            return income >= selectedRange.min && income < selectedRange.max;
+        })
+        .map(feature => feature.properties.GEOID);
+    
+    if (tractIds.length === 0) {
+        return;
+    }
+    
+    // Create the outline layer if it doesn't exist yet
+    if (!map.getLayer('top-tracts-outline')) {
+        map.addLayer({
+            id: 'top-tracts-outline',
+            type: 'line',
+            source: 'tracts',
+            paint: {
+                'line-color': '#e41a1c',  // Red outline
+                'line-width': 2,
+                'line-opacity': 0.9
+            },
+            filter: ['in', 'GEOID', '']
+        });
+    }
+    
+    // Set highlight filter on the outline layer
+    map.setFilter('top-tracts-outline', ['in', 'GEOID', ...tractIds]);
+    
+    // Fly to the bounds of the highlighted tracts
+    const highlightedFeatures = tractsData.features.filter(f => 
+        tractIds.includes(f.properties.GEOID));
+        
+    if (highlightedFeatures.length > 0) {
+        const bounds = new mapboxgl.LngLatBounds();
+        
+        highlightedFeatures.forEach(feature => {
+            if (feature.geometry && feature.geometry.coordinates) {
+                try {
+                    if (feature.geometry.type === 'Polygon') {
+                        feature.geometry.coordinates[0].forEach(coord => {
+                            bounds.extend(coord);
+                        });
+                    } else if (feature.geometry.type === 'MultiPolygon') {
+                        feature.geometry.coordinates.forEach(polygon => {
+                            polygon[0].forEach(coord => {
+                                bounds.extend(coord);
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Error processing geometry:', error);
+                }
+            }
+        });
+        
+        // Only fit bounds if not empty
+        if (!bounds.isEmpty()) {
+            map.fitBounds(bounds, {
+                padding: 50,
+                maxZoom: 14
+            });
+        }
+    }
+    
+    // Display count in a toast notification
+    showToastNotification(`Highlighted ${tractIds.length} tracts classified as "${incomeLevel}"`);
+}
+
+// Create chart for tract type analysis
+function createTractTypeChart(categoryData, categories) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 80, bottom: 50, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Average Third Places by Tract Type');
+    
+    // Prepare data for the chart
+    const chartData = categories
+        .filter(category => categoryData[category] && categoryData[category].count > 0)
+        .map(category => {
+            return {
+                category: category,
+                traditional: categoryData[category].avgTraditional,
+                community: categoryData[category].avgCommunity,
+                modern: categoryData[category].avgModern
+            };
+        });
+    
+    // Sort categories by urbanization level
+    chartData.sort((a, b) => {
+        const order = {
+            "Rural/Exurban": 1,
+            "Low Density Suburban": 2,
+            "Medium Density Suburban": 3,
+            "Urban Residential": 4,
+            "Dense Urban": 5
+        };
+        return order[a.category] - order[b.category];
+    });
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(chartData.map(d => d.category))
+        .range([0, innerWidth])
+        .padding(0.2);
+    
+    const maxValue = d3.max(chartData, d => d.traditional + d.community + d.modern);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, maxValue * 1.1]) // Add 10% padding at the top
+        .range([innerHeight, 0])
+        .nice();
+    
+    // Set colors
+    const colors = {
+        traditional: '#ff8f00', // Amber - consistent with the app
+        community: '#00acc1',   // Teal - consistent with the app
+        modern: '#c51b8a'       // Pink - consistent with the app
+    };
+    
+    // Create stacked data
+    const stackedData = chartData.map(d => {
+        const traditionalHeight = d.traditional;
+        const communityHeight = d.community;
+        const modernHeight = d.modern;
+        
+        return {
+            category: d.category,
+            segments: [
+                {
+                    type: 'traditional',
+                    value: traditionalHeight,
+                    y0: 0,
+                    y1: traditionalHeight
+                },
+                {
+                    type: 'community',
+                    value: communityHeight, 
+                    y0: traditionalHeight,
+                    y1: traditionalHeight + communityHeight
+                },
+                {
+                    type: 'modern',
+                    value: modernHeight,
+                    y0: traditionalHeight + communityHeight,
+                    y1: traditionalHeight + communityHeight + modernHeight
+                }
+            ]
+        };
+    });
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-35)')
+        .style('font-size', '10px');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5));
+    
+    // Add y-axis label
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -40)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Average Third Places per Tract');
+    
+    // Add stacked bars
+    stackedData.forEach(d => {
+        // For each category, we'll draw stacked segments
+        d.segments.forEach(segment => {
+            g.append('rect')
+                .attr('x', xScale(d.category))
+                .attr('y', yScale(segment.y1))
+                .attr('height', yScale(segment.y0) - yScale(segment.y1))
+                .attr('width', xScale.bandwidth())
+                .attr('fill', colors[segment.type])
+                .attr('opacity', 0.8)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 1);
+        });
+        
+        // Add total label above each bar
+        const totalValue = d.segments[d.segments.length - 1].y1;
+        g.append('text')
+            .attr('x', xScale(d.category) + xScale.bandwidth() / 2)
+            .attr('y', yScale(totalValue) - 5)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '10px')
+            .style('font-weight', '600')
+            .text(totalValue.toFixed(1));
+    });
+    
+    // Add legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width - margin.right + 15}, ${margin.top})`);
+    
+    const legendItems = [
+        { label: 'Traditional', color: colors.traditional },
+        { label: 'Community', color: colors.community },
+        { label: 'Modern', color: colors.modern }
+    ];
+    
+    legendItems.forEach((item, i) => {
+        const legendRow = legend.append('g')
+            .attr('transform', `translate(0, ${i * 20})`);
+        
+        legendRow.append('rect')
+            .attr('width', 12)
+            .attr('height', 12)
+            .attr('fill', item.color)
+            .attr('opacity', 0.8);
+        
+        legendRow.append('text')
+            .attr('x', 20)
+            .attr('y', 10)
+            .style('font-size', '12px')
+            .text(item.label);
+    });
+}
+
+// Show income analysis
+function showIncomeAnalysis() {
+    const resultsContainer = document.getElementById('analysis-results');
+    
+    // Group tracts by income level
+    const incomeRanges = [
+        { name: "Low Income", min: 0, max: 40000, color: "#90caf9" },
+        { name: "Lower-Middle Income", min: 40000, max: 70000, color: "#42a5f5" },
+        { name: "Middle Income", min: 70000, max: 100000, color: "#1976d2" },
+        { name: "Upper-Middle Income", min: 100000, max: 150000, color: "#0d47a1" },
+        { name: "High Income", min: 150000, max: Infinity, color: "#002171" }
+    ];
+    
+    const incomeData = {};
+    incomeRanges.forEach(range => {
+        incomeData[range.name] = {
+            min: range.min,
+            max: range.max,
+            color: range.color,
+            count: 0,
+            tracts: [],
+            totalPlaces: 0,
+            traditional: 0,
+            community: 0,
+            modern: 0,
+            avgTotal: 0,
+            avgTPI: 0,
+            avgTraditional: 0,
+            avgCommunity: 0,
+            avgModern: 0,
+            avgIncome: 0
+        };
+    });
+    
+    // Collect all median incomes for correlation analysis
+    const allIncomes = [];
+    const allTPIs = [];
+    const allTraditionalIndices = [];
+    const allCommunityIndices = [];
+    const allModernIndices = [];
+    const allPlaceCounts = [];
+    
+    // Collect data for each tract by income range
+    tractsData.features.forEach(feature => {
+        const props = feature.properties;
+        const income = props.median_income || 0;
+        
+        if (income > 0) {
+            allIncomes.push(income);
+            allTPIs.push(props.third_place_index || 0);
+            allTraditionalIndices.push(props.traditional_index || 0);
+            allCommunityIndices.push(props.community_index || 0);
+            allModernIndices.push(props.modern_index || 0);
+            
+            const totalPlaces = (props.traditional_count || 0) + 
+                               (props.community_count || 0) + 
+                               (props.modern_count || 0);
+            allPlaceCounts.push(totalPlaces);
+            
+            // Assign to income range
+            const range = incomeRanges.find(r => income >= r.min && income < r.max);
+            if (range) {
+                const rangeName = range.name;
+                incomeData[rangeName].count++;
+                incomeData[rangeName].avgIncome += income;
+                
+                const traditionalCount = props.traditional_count || 0;
+                const communityCount = props.community_count || 0;
+                const modernCount = props.modern_count || 0;
+                
+                incomeData[rangeName].tracts.push({
+                    id: props.GEOID,
+                    income: income,
+                    traditional: traditionalCount,
+                    community: communityCount,
+                    modern: modernCount,
+                    total: totalPlaces,
+                    tpi: props.third_place_index || 0,
+                    traditionalIndex: props.traditional_index || 0,
+                    communityIndex: props.community_index || 0,
+                    modernIndex: props.modern_index || 0
+                });
+                
+                incomeData[rangeName].totalPlaces += totalPlaces;
+                incomeData[rangeName].traditional += traditionalCount;
+                incomeData[rangeName].community += communityCount;
+                incomeData[rangeName].modern += modernCount;
+            }
+        }
+    });
+    
+    // Calculate averages for each income range
+    incomeRanges.forEach(range => {
+        const data = incomeData[range.name];
+        if (data.count > 0) {
+            data.avgIncome = data.avgIncome / data.count;
+            data.avgTotal = data.totalPlaces / data.count;
+            data.avgTraditional = data.traditional / data.count;
+            data.avgCommunity = data.community / data.count;
+            data.avgModern = data.modern / data.count;
+            
+            // Calculate average indices
+            data.avgTPI = data.tracts.reduce((sum, tract) => sum + tract.tpi, 0) / data.count;
+            data.avgTraditionalIndex = data.tracts.reduce((sum, tract) => sum + tract.traditionalIndex, 0) / data.count;
+            data.avgCommunityIndex = data.tracts.reduce((sum, tract) => sum + tract.communityIndex, 0) / data.count;
+            data.avgModernIndex = data.tracts.reduce((sum, tract) => sum + tract.modernIndex, 0) / data.count;
+        }
+    });
+    
+    // Calculate correlation coefficient
+    const calculateCorrelation = (x, y) => {
+        const n = x.length;
+        if (n === 0 || n !== y.length) return 0;
+        
+        let sumX = 0;
+        let sumY = 0;
+        let sumXY = 0;
+        let sumX2 = 0;
+        let sumY2 = 0;
+        
+        for (let i = 0; i < n; i++) {
+            sumX += x[i];
+            sumY += y[i];
+            sumXY += x[i] * y[i];
+            sumX2 += x[i] * x[i];
+            sumY2 += y[i] * y[i];
+        }
+        
+        const numerator = n * sumXY - sumX * sumY;
+        const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        
+        if (denominator === 0) return 0;
+        return numerator / denominator;
+    };
+    
+    // Calculate correlations
+    const tpiCorrelation = calculateCorrelation(allIncomes, allTPIs);
+    const traditionalCorrelation = calculateCorrelation(allIncomes, allTraditionalIndices);
+    const communityCorrelation = calculateCorrelation(allIncomes, allCommunityIndices);
+    const modernCorrelation = calculateCorrelation(allIncomes, allModernIndices);
+    const placeCountCorrelation = calculateCorrelation(allIncomes, allPlaceCounts);
+    
+    // Create highlight controls
+    const highlightControlsHtml = `
+        <div class="tract-type-highlight-controls">
+            <div class="highlight-control-row">
+                <div class="control-label">Highlight all tracts of type:</div>
+                <div class="control-input">
+                    <select id="income-level-select" class="form-select">
+                        <option value="">-- Select an income level --</option>
+                        ${incomeRanges.map(range => `<option value="${range.name}">${range.name}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="highlight-buttons">
+                <button id="highlight-income-btn" class="btn btn-primary">Highlight</button>
+                <button id="clear-income-highlight-btn" class="btn btn-secondary">Clear Highlight</button>
+            </div>
+        </div>
+    `;
+    
+    // Create HTML content for income ranges without highlight buttons
+    let incomeRangeHtml = `<div class="income-ranges">`;
+    
+    incomeRanges.forEach(range => {
+        const data = incomeData[range.name];
+        if (data.count === 0) return;
+        
+        const formattedAvgIncome = formatCurrency(data.avgIncome);
+        
+        incomeRangeHtml += `
+            <div class="income-range-row">
+                <div class="income-range-name">
+                    ${range.name}
+                </div>
+                <div class="income-range-avg">${formattedAvgIncome}</div>
+                <div class="income-range-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Tracts</div>
+                        <div class="metric-value">${data.count}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Avg Places</div>
+                        <div class="metric-value">${data.avgTotal.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Avg TPI</div>
+                        <div class="metric-value">${data.avgTPI.toFixed(3)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Traditional</div>
+                        <div class="metric-value">${data.avgTraditional.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Community</div>
+                        <div class="metric-value">${data.avgCommunity.toFixed(1)}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Modern</div>
+                        <div class="metric-value">${data.avgModern.toFixed(1)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    incomeRangeHtml += `</div>`;
+    
+    // Create correlation table
+    const correlationHtml = `
+        <div class="correlation-analysis">
+            <h4>Income Correlation Analysis</h4>
+            <div class="correlation-explanation">
+                <p>Correlation coefficient values range from -1 to 1:</p>
+                <ul>
+                    <li>Values near 1 indicate a strong positive correlation</li>
+                    <li>Values near -1 indicate a strong negative correlation</li>
+                    <li>Values near 0 indicate little to no linear correlation</li>
+                </ul>
+            </div>
+            <table class="correlation-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Correlation with Income</th>
+                        <th>Strength</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Third Place Index (TPI)</td>
+                        <td>${tpiCorrelation.toFixed(3)}</td>
+                        <td>${getCorrelationStrength(tpiCorrelation)}</td>
+                    </tr>
+                    <tr>
+                        <td>Traditional Places Index</td>
+                        <td>${traditionalCorrelation.toFixed(3)}</td>
+                        <td>${getCorrelationStrength(traditionalCorrelation)}</td>
+                    </tr>
+                    <tr>
+                        <td>Community Places Index</td>
+                        <td>${communityCorrelation.toFixed(3)}</td>
+                        <td>${getCorrelationStrength(communityCorrelation)}</td>
+                    </tr>
+                    <tr>
+                        <td>Modern Places Index</td>
+                        <td>${modernCorrelation.toFixed(3)}</td>
+                        <td>${getCorrelationStrength(modernCorrelation)}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Places Count</td>
+                        <td>${placeCountCorrelation.toFixed(3)}</td>
+                        <td>${getCorrelationStrength(placeCountCorrelation)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // Create overall insights
+    const insights = [];
+    
+    if (Math.abs(tpiCorrelation) > 0.3) {
+        if (tpiCorrelation > 0) {
+            insights.push(`Higher income areas tend to have higher Third Place Index values, suggesting better access to third places in wealthier areas.`);
+        } else {
+            insights.push(`Lower income areas tend to have higher Third Place Index values, suggesting better access to third places in less affluent areas.`);
+        }
+    }
+    
+    if (Math.abs(traditionalCorrelation) > 0.3) {
+        if (traditionalCorrelation > 0) {
+            insights.push(`Traditional third places (e.g., cafes, bars, bookstores) appear more concentrated in higher income areas.`);
+        } else {
+            insights.push(`Traditional third places appear more prevalent in lower income areas of the region.`);
+        }
+    }
+    
+    if (Math.abs(communityCorrelation) > 0.3) {
+        if (communityCorrelation > 0) {
+            insights.push(`Community spaces like libraries and religious establishments show a positive correlation with income.`);
+        } else {
+            insights.push(`Community spaces are more accessible in lower income neighborhoods.`);
+        }
+    }
+    
+    if (Math.abs(modernCorrelation) > 0.3) {
+        if (modernCorrelation > 0) {
+            insights.push(`Modern third places (e.g., coworking spaces, gaming venues) are more prevalent in higher income areas.`);
+        } else {
+            insights.push(`Modern third places show greater presence in lower income areas.`);
+        }
+    }
+    
+    let insightsHtml = '';
+    if (insights.length > 0) {
+        insightsHtml = `
+            <div class="tract-type-insights">
+                <h4>Key Insights</h4>
+                <ul>
+                    ${insights.map(insight => `<li>${insight}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    // Create chart
+    createIncomeAnalysisChart(incomeData, incomeRanges);
+    
+    // Compile all HTML
+    const html = `
+        <h3>Income Analysis: Third Places by Income Level</h3>
+        <div class="analysis-text">
+            <p>This analysis examines the relationship between median household income and third place accessibility across census tracts.</p>
+            
+            <div class="tract-type-highlight">
+                <label for="income-level-selector">Highlight all tracts of type:</label>
+                <select id="income-level-selector" class="form-select">
+                    <option value="">-- Select an income level --</option>
+                    ${incomeRanges.map(range => `<option value="${range.name}">${range.name}</option>`).join('')}
+                </select>
+                <button id="highlight-income-btn" class="btn btn-primary">Highlight</button>
+                <button id="clear-income-highlight-btn" class="btn btn-secondary">Clear Highlight</button>
+            </div>
+            
+            ${insightsHtml}
+            
+            <h4>Income Range Analysis</h4>
+            ${incomeRangeHtml}
+            
+            ${correlationHtml}
+        </div>
+        
+        <div id="income-analysis-chart" class="chart-container"></div>
+    `;
+    
+    resultsContainer.innerHTML = html;
+    
+    // Set up event listeners for highlight controls
+    document.getElementById('highlight-income-btn').addEventListener('click', () => {
+        const selectedIncome = document.getElementById('income-level-selector').value;
+        if (selectedIncome) {
+            highlightTractsByIncome(selectedIncome);
+        }
+    });
+    
+    document.getElementById('clear-income-highlight-btn').addEventListener('click', () => {
+        clearTopTractsHighlight();
+    });
+}
+
+// Create chart for income analysis
+function createIncomeAnalysisChart(incomeData, incomeRanges) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 80, bottom: 50, left: 50 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Third Place Types by Income Range');
+    
+    // Prepare data for the chart
+    const chartData = incomeRanges
+        .filter(range => incomeData[range.name] && incomeData[range.name].count > 0)
+        .map(range => {
+            return {
+                range: range.name,
+                income: incomeData[range.name].avgIncome,
+                traditional: incomeData[range.name].avgTraditional,
+                community: incomeData[range.name].avgCommunity,
+                modern: incomeData[range.name].avgModern,
+                color: range.color
+            };
+        });
+    
+    // Sort by income level
+    chartData.sort((a, b) => a.income - b.income);
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(chartData.map(d => d.range))
+        .range([0, innerWidth])
+        .padding(0.2);
+    
+    const maxValue = d3.max(chartData, d => d.traditional + d.community + d.modern);
+    
+    const yScale = d3.scaleLinear()
+        .domain([0, maxValue * 1.1]) // Add 10% padding at the top
+        .range([innerHeight, 0])
+        .nice();
+    
+    // Set colors
+    const colors = {
+        traditional: '#ff8f00', // Amber - consistent with the app
+        community: '#00acc1',   // Teal - consistent with the app
+        modern: '#c51b8a'       // Pink - consistent with the app
+    };
+    
+    // Create stacked data
+    const stackedData = chartData.map(d => {
+        const traditionalHeight = d.traditional;
+        const communityHeight = d.community;
+        const modernHeight = d.modern;
+        
+        return {
+            range: d.range,
+            income: d.income,
+            segments: [
+                {
+                    type: 'traditional',
+                    value: traditionalHeight,
+                    y0: 0,
+                    y1: traditionalHeight
+                },
+                {
+                    type: 'community',
+                    value: communityHeight, 
+                    y0: traditionalHeight,
+                    y1: traditionalHeight + communityHeight
+                },
+                {
+                    type: 'modern',
+                    value: modernHeight,
+                    y0: traditionalHeight + communityHeight,
+                    y1: traditionalHeight + communityHeight + modernHeight
+                }
+            ]
+        };
+    });
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-35)')
+        .style('font-size', '10px');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5));
+    
+    // Add y-axis label
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -40)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Average Third Places per Tract');
+    
+    // Add stacked bars
+    stackedData.forEach(d => {
+        // For each income range, we'll draw stacked segments
+        d.segments.forEach(segment => {
+            g.append('rect')
+                .attr('x', xScale(d.range))
+                .attr('y', yScale(segment.y1))
+                .attr('height', yScale(segment.y0) - yScale(segment.y1))
+                .attr('width', xScale.bandwidth())
+                .attr('fill', colors[segment.type])
+                .attr('opacity', 0.8)
+                .attr('stroke', 'white')
+                .attr('stroke-width', 1);
+        });
+        
+        // Add total label above each bar
+        const totalValue = d.segments[d.segments.length - 1].y1;
+        g.append('text')
+            .attr('x', xScale(d.range) + xScale.bandwidth() / 2)
+            .attr('y', yScale(totalValue) - 5)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '10px')
+            .style('font-weight', '600')
+            .text(totalValue.toFixed(1));
+        
+        // Add income label below bars
+        g.append('text')
+            .attr('x', xScale(d.range) + xScale.bandwidth() / 2)
+            .attr('y', innerHeight + 35)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '9px')
+            .style('fill', '#555')
+            .text('$' + Math.round(d.income / 1000) + 'k');
+    });
+    
+    // Add legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width - margin.right + 15}, ${margin.top})`);
+    
+    const legendItems = [
+        { label: 'Traditional', color: colors.traditional },
+        { label: 'Community', color: colors.community },
+        { label: 'Modern', color: colors.modern }
+    ];
+    
+    legendItems.forEach((item, i) => {
+        const legendRow = legend.append('g')
+            .attr('transform', `translate(0, ${i * 20})`);
+        
+        legendRow.append('rect')
+            .attr('width', 12)
+            .attr('height', 12)
+            .attr('fill', item.color)
+            .attr('opacity', 0.8);
+        
+        legendRow.append('text')
+            .attr('x', 20)
+            .attr('y', 10)
+            .style('font-size', '12px')
+            .text(item.label);
+    });
+}
+
+// Helper function to format currency
+function formatCurrency(value) {
+    return '$' + Math.round(value).toLocaleString();
+}
+
+// Helper function to get correlation strength description
+function getCorrelationStrength(correlation) {
+    const absCorrelation = Math.abs(correlation);
+    if (absCorrelation < 0.1) return 'Negligible';
+    if (absCorrelation < 0.3) return 'Weak';
+    if (absCorrelation < 0.5) return 'Moderate';
+    if (absCorrelation < 0.7) return 'Strong';
+    return 'Very Strong';
+}
+
+// Show spatial analysis

@@ -48,14 +48,17 @@ body {
     padding: 0.5rem 1rem;
     cursor: pointer;
     font-weight: 500;
-    display: flex;
-    align-items: center;
+    display: inline-block;
     gap: 0.5rem;
     transition: background-color 0.2s ease;
 }
 
 .control-btn:hover {
     background-color: #3a56d4;
+}
+
+.control-btn i {
+    margin-right: 6px;
 }
 
 /* Content area */
@@ -656,35 +659,35 @@ input[type="radio"]:checked::after {
 /* Analysis Panel */
 .analysis-panel {
     right: 0;
-    width: 450px;
+    width: 550px; /* Increase width to accommodate 4 buttons */
     border-left: 1px solid #e0e5ec;
     display: none; /* Initially hidden */
 }
 
 .analysis-options {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns, two rows for 4 buttons */
+    grid-gap: 10px; /* Add some space between buttons */
     margin-bottom: 20px;
+    width: 100%;
 }
 
 .analysis-btn {
-    flex: 1;
+    display: inline-block;
     background-color: #4361ee;
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 10px;
+    padding: 10px 8px;
     cursor: pointer;
     font-weight: 500;
     transition: background-color 0.2s ease;
     text-align: center;
     font-size: 0.9rem;
     white-space: nowrap;
-    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%; /* Each button takes full width of its grid cell */
 }
 
 .analysis-btn:hover {
@@ -714,6 +717,254 @@ input[type="radio"]:checked::after {
     border-radius: 4px;
     padding: 15px;
     margin-top: 15px;
+}
+
+/* Tract Type Analysis Styles */
+.category-comparison {
+    margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tract-type-highlight {
+    margin: 15px 0;
+    padding: 12px;
+    background-color: #f0f7ff;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tract-type-highlight label {
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.tract-type-highlight select {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    min-width: 200px;
+    background-color: white;
+}
+
+.tract-type-highlight button {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+#highlight-tract-type-btn {
+    background-color: #4361ee;
+    color: white;
+}
+
+#highlight-tract-type-btn:hover {
+    background-color: #3a56d4;
+}
+
+#clear-tract-highlight-btn {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+#clear-tract-highlight-btn:hover {
+    background-color: #d0d0d0;
+}
+
+.category-row {
+    display: flex;
+    padding: 10px;
+    background-color: #f0f7ff;
+    border-radius: 4px;
+    align-items: center;
+}
+
+.category-label {
+    min-width: 160px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.category-metrics {
+    flex-grow: 1;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 2px;
+}
+
+.metric-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.category-composition {
+    margin: 25px 0;
+}
+
+.composition-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.composition-table th {
+    background-color: #f0f0f0;
+    padding: 8px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.composition-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.tract-type-insights {
+    margin: 25px 0;
+    background-color: #f3f6fa;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid #4361ee;
+}
+
+.tract-type-insights h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1a1a2e;
+}
+
+.tract-type-insights ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.tract-type-insights li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Income Analysis Styles */
+.income-ranges {
+    margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.income-range-row {
+    display: flex;
+    padding: 10px;
+    background-color: #f0f7ff;
+    border-radius: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.income-range-name {
+    min-width: 140px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.income-range-avg {
+    min-width: 100px;
+    font-size: 0.9rem;
+    color: #0d47a1;
+}
+
+.income-range-metrics {
+    flex-grow: 1;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.correlation-analysis {
+    margin: 25px 0;
+    padding: 15px;
+    background-color: #f7f7f7;
+    border-radius: 6px;
+}
+
+.correlation-analysis h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1a1a2e;
+}
+
+.correlation-explanation {
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.correlation-explanation ul {
+    padding-left: 20px;
+    margin: 5px 0;
+}
+
+.correlation-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.correlation-table th {
+    background-color: #e6e6e6;
+    padding: 8px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.correlation-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+.income-insights {
+    margin: 25px 0;
+    background-color: #f3f6fa;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid #4361ee;
+}
+
+.income-insights h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #1a1a2e;
+}
+
+.income-insights ul {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.income-insights li {
+    margin-bottom: 8px;
+    line-height: 1.5;
 }
 
 .top-tract-item {
@@ -825,16 +1076,159 @@ input[type="radio"]:checked::after {
     }
     
     .analysis-options {
-        flex-direction: column;
-    }
-    
-    .analysis-btn {
-        width: 100%;
+        grid-template-columns: 1fr;
+        gap: 5px;
     }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
     .analysis-panel {
-        width: 380px;
+        width: 400px;
     }
-} 
+}
+
+.place-types-summary {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.place-types-summary ul {
+    margin-top: 5px;
+    padding-left: 20px;
+}
+
+.place-types-container {
+    margin-top: 20px;
+}
+
+.place-types-section {
+    margin-bottom: 25px;
+}
+
+.place-types-section h4 {
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.place-types-section p {
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    color: #666;
+}
+
+.place-type-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.place-type-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+}
+
+.place-type-name {
+    flex: 0 0 120px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.place-type-bar-container {
+    flex-grow: 1;
+    height: 8px;
+    background-color: #e0e5ec;
+    border-radius: 4px;
+    margin: 0 10px;
+    overflow: hidden;
+}
+
+.place-type-bar {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.place-type-count {
+    flex: 0 0 30px;
+    text-align: right;
+    font-weight: 600;
+}
+
+.place-type-percent {
+    flex: 0 0 50px;
+    text-align: right;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.place-types-note {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    margin-top: 15px;
+}
+
+.civic-engagement-preview {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #4361ee;
+}
+
+.civic-engagement-preview h4 {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 1rem;
+}
+
+.civic-engagement-preview h4:first-child {
+    margin-top: 0;
+}
+
+.civic-engagement-preview ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
+
+.civic-engagement-preview li {
+    margin-bottom: 8px;
+}
+
+.civic-note {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    margin-top: 15px;
+}
+
+/* Toast Notification */
+#toast-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+#toast-notification.toast-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Media queries */ 
