@@ -656,7 +656,7 @@ input[type="radio"]:checked::after {
 /* Analysis Panel */
 .analysis-panel {
     right: 0;
-    width: 380px;
+    width: 450px;
     border-left: 1px solid #e0e5ec;
     display: none; /* Initially hidden */
 }
@@ -665,7 +665,7 @@ input[type="radio"]:checked::after {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 20px;
 }
 
@@ -675,12 +675,16 @@ input[type="radio"]:checked::after {
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 12px 15px;
+    padding: 10px;
     cursor: pointer;
     font-weight: 500;
     transition: background-color 0.2s ease;
     text-align: center;
+    font-size: 0.9rem;
     white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .analysis-btn:hover {
@@ -826,5 +830,11 @@ input[type="radio"]:checked::after {
     
     .analysis-btn {
         width: 100%;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .analysis-panel {
+        width: 380px;
     }
 } 
