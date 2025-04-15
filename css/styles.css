@@ -349,11 +349,11 @@ input[type="radio"]:checked::after {
 }
 
 .traditional-bar {
-    background-color: #d35400; /* Orange - consistent across the app */
+    background-color: #ff8f00; /* Amber - consistent across the app */
 }
 
 .community-bar {
-    background-color: #2ecc71; /* Green - consistent across the app */
+    background-color: #00acc1; /* Teal - consistent across the app */
 }
 
 .modern-bar {
@@ -420,11 +420,11 @@ input[type="radio"]:checked::after {
 }
 
 .category-traditional {
-    background-color: #d35400; /* Orange - consistent across the app */
+    background-color: #ff8f00; /* Amber - consistent across the app */
 }
 
 .category-community {
-    background-color: #2ecc71; /* Green - consistent across the app */
+    background-color: #00acc1; /* Teal - consistent across the app */
 }
 
 .category-modern {

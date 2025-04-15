@@ -763,8 +763,8 @@ function createPlacesChart(data) {
     const colorScale = d3.scaleOrdinal()
         .domain(['Traditional', 'Community', 'Modern'])
         .range([
-            '#d35400', // Orange - consistent across the app
-            '#2ecc71', // Green - consistent across the app
+            '#ff8f00', // Amber - consistent across the app
+            '#00acc1', // Teal - consistent across the app
             '#c51b8a'  // Pink - consistent across the app
         ]);
     
@@ -1199,8 +1199,8 @@ function createPlaceTypesChart(tractId) {
         // Get the category color
         let color;
         switch(type.category) {
-            case 'traditional': color = '#d35400'; break; // Orange - consistent across the app
-            case 'community': color = '#2ecc71'; break;   // Green - consistent across the app
+            case 'traditional': color = '#ff8f00'; break; // Amber - consistent across the app
+            case 'community': color = '#00acc1'; break;   // Teal - consistent across the app
             case 'modern': color = '#c51b8a'; break;      // Pink - consistent across the app
             default: color = '#999';
         }
