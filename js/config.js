@@ -41,7 +41,7 @@ const CONFIG = {
     // Place categories configuration
     placeCategories: {
         traditional: {
-            color: '#d35400', // Orange - consistent across the app
+            color: '#ff8f00', // Amber - consistent across the app
             paint: {
                 'circle-radius': [
                     'interpolate',
@@ -50,14 +50,14 @@ const CONFIG = {
                     10, 2,
                     14, 6
                 ],
-                'circle-color': '#d35400',
+                'circle-color': '#ff8f00',
                 'circle-opacity': 0.8,
                 'circle-stroke-width': 1,
                 'circle-stroke-color': '#fff'
             }
         },
         community: {
-            color: '#2ecc71', // Green - consistent with score bar
+            color: '#00acc1', // Teal - consistent with score bar
             paint: {
                 'circle-radius': [
                     'interpolate',
@@ -66,7 +66,7 @@ const CONFIG = {
                     10, 2,
                     14, 6
                 ],
-                'circle-color': '#2ecc71',
+                'circle-color': '#00acc1',
                 'circle-opacity': 0.8,
                 'circle-stroke-width': 1,
                 'circle-stroke-color': '#fff'
@@ -100,18 +100,18 @@ const CONFIG = {
             '#253494'
         ],
         traditional: [
-            '#fff5eb',
-            '#fed8b1',
-            '#fc8d59',
-            '#e67e22',
-            '#d35400'
+            '#fff8e1',
+            '#ffecb3',
+            '#ffd54f',
+            '#ffb300',
+            '#ff8f00'
         ],
         community: [
-            '#eafaf1',
-            '#a9dfbf',
-            '#7dcea0',
-            '#2ecc71',
-            '#1e8449'
+            '#e0f7fa',
+            '#b2ebf2',
+            '#4dd0e1',
+            '#00acc1',
+            '#00838f'
         ],
         modern: [
             '#fde0dd',
