@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Third Place Index</title>
+    
+    <!-- Google Fonts - Libre Franklin -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Mapbox GL CSS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-title">Third Place Index</div>
+            <div class="header-controls">
+                <button id="layers-btn" class="control-btn">
+                    <i class="fas fa-layer-group"></i> Layers
+                </button>
+            </div>
+        </header>
+        
+        <!-- Main content area -->
+        <div class="content-area">
+            <!-- Map container -->
+            <div id="map" class="map-container"></div>
+            
+            <!-- Details panel (initially hidden) -->
+            <div class="details-panel panel hidden">
+                <div class="panel-header">
+                    <h2>Census Tract Details</h2>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="panel-content" id="details-content">
+                    <div class="tract-header">
+                        <h3>Tract <span id="tract-id"></span></h3>
+                        <div class="density-category" id="density-category"></div>
+                    </div>
+                    
+                    <div class="index-section">
+                        <h4>Third Place Index</h4>
+                        <div class="main-score-container">
+                            <div class="main-score-value" id="overall-score"></div>
+                            <div class="main-score-bar-container">
+                                <div class="main-score-bar" id="overall-score-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="subscores-section">
+                        <div class="subscore-item">
+                            <div class="subscore-label">Traditional</div>
+                            <div class="subscore-value" id="traditional-score-value"></div>
+                            <div class="subscore-bar-container">
+                                <div class="subscore-bar traditional-bar" id="traditional-score-bar"></div>
+                            </div>
+                        </div>
+                        <div class="subscore-item">
+                            <div class="subscore-label">Community</div>
+                            <div class="subscore-value" id="community-score-value"></div>
+                            <div class="subscore-bar-container">
+                                <div class="subscore-bar community-bar" id="community-score-bar"></div>
+                            </div>
+                        </div>
+                        <div class="subscore-item">
+                            <div class="subscore-label">Modern</div>
+                            <div class="subscore-value" id="modern-score-value"></div>
+                            <div class="subscore-bar-container">
+                                <div class="subscore-bar modern-bar" id="modern-score-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="demographic-section">
+                        <h4>Demographic Information</h4>
+                        <div id="demographic-info"></div>
+                    </div>
+                    
+                    <div class="places-section">
+                        <h4>Places Breakdown</h4>
+                        <div id="places-chart" class="places-chart"></div>
+                    </div>
+                    
+                    <div class="place-types-section">
+                        <h4>Detailed Place Types</h4>
+                        <div id="place-types-chart" class="place-types-chart"></div>
+                    </div>
+                    
+                    <div class="ranking-section">
+                        <h4>Ranking</h4>
+                        <div class="ranking-info">
+                            <div>Overall Rank: <span id="overall-rank"></span> of <span id="total-tracts"></span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="distribution-section">
+                        <h4>Distribution</h4>
+                        <div id="distribution-chart" class="distribution-chart"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Layers panel -->
+            <div class="layers-panel panel">
+                <div class="panel-header">
+                    <h2>Map Layers</h2>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="panel-content">
+                    <div class="layer-section">
+                        <h4>Third Place Index</h4>
+                        <div class="layer-option">
+                            <input type="radio" name="index-layer" id="overall-index" checked>
+                            <label for="overall-index">Overall Index</label>
+                        </div>
+                        <div class="layer-option">
+                            <input type="radio" name="index-layer" id="traditional-score">
+                            <label for="traditional-score">Traditional Score</label>
+                        </div>
+                        <div class="layer-option">
+                            <input type="radio" name="index-layer" id="community-score">
+                            <label for="community-score">Community Score</label>
+                        </div>
+                        <div class="layer-option">
+                            <input type="radio" name="index-layer" id="modern-score">
+                            <label for="modern-score">Modern Score</label>
+                        </div>
+                    </div>
+                    
+                    <div class="layer-section">
+                        <h4>Places</h4>
+                        <div class="layer-option">
+                            <input type="checkbox" id="places-layer" checked>
+                            <label for="places-layer">Show All Places</label>
+                        </div>
+                        <div class="layer-option subcategory">
+                            <input type="checkbox" id="traditional-places" checked>
+                            <label for="traditional-places">Traditional</label>
+                        </div>
+                        <div class="layer-option subcategory">
+                            <input type="checkbox" id="community-places" checked>
+                            <label for="community-places">Community</label>
+                        </div>
+                        <div class="layer-option subcategory">
+                            <input type="checkbox" id="modern-places" checked>
+                            <label for="modern-places">Modern</label>
+                        </div>
+                    </div>
+                    
+                    <div class="layer-section">
+                        <h4>Map Features</h4>
+                        <div class="layer-option">
+                            <input type="checkbox" id="buildings-3d" checked>
+                            <label for="buildings-3d">3D Buildings</label>
+                        </div>
+                        <div class="layer-option">
+                            <input type="checkbox" id="city-labels">
+                            <label for="city-labels">Show City Labels</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mapbox GL JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    
+    <!-- D3.js for charts -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html> 

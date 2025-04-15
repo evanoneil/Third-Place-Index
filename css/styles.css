@@ -1,0 +1,654 @@
+/* Global styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Libre Franklin', sans-serif;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    color: #333;
+    background-color: #f5f7fa;
+}
+
+/* App container */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.5rem;
+    background-color: #1a1a2e;
+    color: white;
+    height: 60px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 10;
+}
+
+.header-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.control-btn {
+    background-color: #4361ee;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.control-btn:hover {
+    background-color: #3a56d4;
+}
+
+/* Content area */
+.content-area {
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+}
+
+/* Map container */
+.map-container {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+}
+
+/* Panels */
+.panel {
+    width: 320px;
+    height: 100%;
+    background-color: white;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+}
+
+.details-panel {
+    left: 0;
+    border-right: 1px solid #e0e5ec;
+}
+
+.layers-panel {
+    right: 0;
+    width: 280px;
+    border-left: 1px solid #e0e5ec;
+}
+
+.hidden {
+    display: none;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.panel-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    color: #333;
+}
+
+.panel-content {
+    padding: 1.2rem;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* Layer sections */
+.layer-section {
+    margin-bottom: 2rem;
+}
+
+.layer-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.layer-option {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.layer-option label {
+    margin-left: 0.6rem;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+.subcategory {
+    margin-left: 1.5rem;
+}
+
+/* Custom checkboxes and radio buttons */
+input[type="checkbox"], input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ccc;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+}
+
+input[type="radio"] {
+    border-radius: 50%;
+}
+
+input[type="checkbox"]:checked, input[type="radio"]:checked {
+    background-color: #4361ee;
+    border-color: #4361ee;
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    top: 2px;
+    left: 6px;
+    transform: rotate(45deg);
+}
+
+input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: white;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+}
+
+/* Details panel styles */
+.tract-header {
+    margin-bottom: 1.5rem;
+}
+
+.tract-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.density-category {
+    display: inline-block;
+    padding: 4px 8px;
+    background-color: #f0f2f5;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #555;
+    margin-top: 0.5rem;
+}
+
+/* Demographic information */
+.demographic-section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.demographic-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.demographic-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.demographic-item:last-child {
+    border-bottom: none;
+}
+
+.demographic-label {
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.demographic-value {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.index-section {
+    margin-bottom: 2rem;
+}
+
+.index-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.8rem;
+}
+
+.main-score-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.main-score-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.main-score-bar-container {
+    width: 100%;
+    height: 8px;
+    background-color: #e0e5ec;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.main-score-bar {
+    height: 100%;
+    background-color: #4361ee;
+    border-radius: 4px;
+}
+
+.subscores-section {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 2rem;
+}
+
+.subscore-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.subscore-label {
+    font-size: 0.85rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.subscore-value {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.subscore-bar-container {
+    width: 100%;
+    height: 6px;
+    background-color: #e0e5ec;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.subscore-bar {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.traditional-bar {
+    background-color: #d35400; /* Orange - consistent across the app */
+}
+
+.community-bar {
+    background-color: #2ecc71; /* Green - consistent across the app */
+}
+
+.modern-bar {
+    background-color: #c51b8a; /* Pink - consistent across the app */
+}
+
+.places-section, .ranking-section {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.places-section h4, .ranking-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.places-chart {
+    height: 220px;
+}
+
+.ranking-info {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* Map Popup */
+.mapboxgl-popup {
+    max-width: 280px;
+}
+
+.mapboxgl-popup-content {
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+.place-popup h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.place-popup p {
+    margin: 5px 0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.place-category {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: white;
+    margin-top: 8px;
+}
+
+.category-traditional {
+    background-color: #d35400; /* Orange - consistent across the app */
+}
+
+.category-community {
+    background-color: #2ecc71; /* Green - consistent across the app */
+}
+
+.category-modern {
+    background-color: #c51b8a; /* Pink - consistent across the app */
+}
+
+/* D3 Chart Styling */
+.bar {
+    transition: opacity 0.2s ease;
+}
+
+.bar:hover {
+    opacity: 0.8;
+}
+
+.value-label {
+    fill: #555;
+    font-weight: 600;
+}
+
+/* Map Legend */
+.map-legend {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    width: 200px;
+    z-index: 2;
+    font-family: 'Libre Franklin', sans-serif;
+}
+
+.legend-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.legend-color {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+.legend-label {
+    font-size: 12px;
+    color: #555;
+}
+
+/* Distribution Chart */
+.distribution-section {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.distribution-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.distribution-chart {
+    height: 180px;
+    position: relative;
+}
+
+.distribution-bar {
+    fill: #e0e5ec;
+    transition: opacity 0.2s ease;
+}
+
+.distribution-bar:hover {
+    opacity: 0.7;
+}
+
+.selected-bar {
+    fill: #4361ee;
+}
+
+.distribution-axis text {
+    font-size: 10px;
+    fill: #666;
+}
+
+.distribution-axis line, .distribution-axis path {
+    stroke: #ccc;
+}
+
+.distribution-marker {
+    stroke: #ff3b30;
+    stroke-width: 2;
+    stroke-dasharray: 4;
+}
+
+/* Detailed Place Types Chart */
+.place-types-section {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.place-types-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.place-types-chart {
+    position: relative;
+    overflow-y: auto;
+}
+
+.place-type-bar {
+    transition: all 0.3s ease;
+    opacity: 0.9;
+}
+
+.place-type-bar:hover {
+    opacity: 1;
+}
+
+.place-type-label {
+    font-size: 12px;
+    fill: #333;
+    font-weight: 500;
+}
+
+.place-type-count {
+    font-size: 11px;
+    fill: #666;
+}
+
+.place-type-axis text {
+    font-size: 10px;
+    fill: #666;
+}
+
+.place-type-axis line, .place-type-axis path {
+    stroke: #ccc;
+}
+
+.place-types-chart .no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-style: italic;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Place Types List - styled to match demographic table */
+.place-types-list {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.place-types-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.place-types-totals {
+    margin-bottom: 0.8rem;
+    color: #666;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dashed #e0e5ec;
+}
+
+.place-type-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e0e5ec;
+}
+
+.place-type-item:last-child {
+    border-bottom: none;
+}
+
+.place-type-item-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.place-type-name {
+    flex-grow: 1;
+    text-align: left;
+    font-weight: 500;
+}
+
+.place-type-count {
+    font-weight: 600;
+    color: #333;
+    min-width: 1.5rem;
+    text-align: right;
+} 
