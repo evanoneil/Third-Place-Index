@@ -10,6 +10,7 @@ let selectedTract = null;
 let selectedTractId = null;
 let tractsRanking = [];
 let buildings3DEnabled = true;
+let currentHighlightedCategory = null;
 
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
@@ -1982,6 +1983,18 @@ function showAllThirdPlaceTypes() {
             third places helps identify patterns in how different communities access and utilize
             social infrastructure.</p>
             
+            <div class="tract-type-highlight">
+                <label for="place-category-selector">Show all places of category:</label>
+                <select id="place-category-selector" class="form-select">
+                    <option value="">-- Select a category --</option>
+                    <option value="traditional">Traditional</option>
+                    <option value="community">Community</option>
+                    <option value="modern">Modern</option>
+                </select>
+                <button id="highlight-place-category-btn" class="btn btn-primary">Show</button>
+                <button id="clear-place-highlight-btn" class="btn btn-secondary">Clear</button>
+            </div>
+            
             <div class="place-types-summary">
                 <p>Total places analyzed: <strong>${totalPlaces}</strong></p>
                 <ul>
@@ -2023,162 +2036,96 @@ function showAllThirdPlaceTypes() {
     
     // Create bar chart showing top place types across all categories
     createPlaceTypesBreakdownChart(placeTypes);
-}
-
-// Create a bar chart for place types breakdown
-function createPlaceTypesBreakdownChart(placeTypes) {
-    const chartContainer = document.getElementById('analysis-chart');
-    chartContainer.innerHTML = '';
     
-    const width = chartContainer.clientWidth;
-    const height = 250;
-    const margin = { top: 30, right: 30, bottom: 90, left: 60 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-    
-    // Group by category for calculating percentages within each category
-    const traditionalTotal = placeTypes.filter(p => p.category === 'traditional')
-        .reduce((sum, item) => sum + item.count, 0);
-    const communityTotal = placeTypes.filter(p => p.category === 'community')
-        .reduce((sum, item) => sum + item.count, 0);
-    const modernTotal = placeTypes.filter(p => p.category === 'modern')
-        .reduce((sum, item) => sum + item.count, 0);
-    
-    // Add percentage info to each place type
-    const placeTypesWithPct = placeTypes.map(type => {
-        let categoryTotal = 0;
-        if (type.category === 'traditional') categoryTotal = traditionalTotal;
-        else if (type.category === 'community') categoryTotal = communityTotal;
-        else if (type.category === 'modern') categoryTotal = modernTotal;
-        
-        return {
-            ...type,
-            percentage: (type.count / categoryTotal) * 100
-        };
+    // Set up event listeners for place category highlighting
+    document.getElementById('highlight-place-category-btn').addEventListener('click', () => {
+        const selectedCategory = document.getElementById('place-category-selector').value;
+        if (selectedCategory) {
+            highlightPlacesByCategory(selectedCategory);
+        }
     });
     
-    // Sort by count and take top 10
-    const topTypes = placeTypesWithPct
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+    document.getElementById('clear-place-highlight-btn').addEventListener('click', () => {
+        clearPlaceCategoryHighlight();
+    });
+}
+
+// Function to highlight places of a specific category
+function highlightPlacesByCategory(category) {
+    // Clear any existing highlights
+    clearPlaceCategoryHighlight();
     
-    const svg = d3.select('#analysis-chart')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height);
+    // Ensure category is valid
+    if (!['traditional', 'community', 'modern'].includes(category)) {
+        console.error(`Invalid place category: ${category}`);
+        return;
+    }
     
-    // Add title
-    svg.append('text')
-        .attr('x', width / 2)
-        .attr('y', 20)
-        .attr('text-anchor', 'middle')
-        .style('font-size', '14px')
-        .style('font-weight', '600')
-        .text('Top Third Place Types (% within category)');
+    // Get all place features for this category
+    const placesInCategory = placesData.features.filter(
+        feature => feature.properties.category === category
+    );
     
-    const g = svg.append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
+    if (placesInCategory.length === 0) {
+        showToastNotification(`No places found in category: ${category}`);
+        return;
+    }
     
-    // Format type name to be more readable
-    const formatTypeName = (name) => {
-        if (!name) return 'Unknown';
+    // Hide all place layers first
+    ['traditional', 'community', 'modern'].forEach(cat => {
+        if (map.getLayer(`places-${cat}`)) {
+            map.setLayoutProperty(`places-${cat}`, 'visibility', 'none');
+        }
+    });
+    
+    // Show only the selected category
+    if (map.getLayer(`places-${category}`)) {
+        map.setLayoutProperty(`places-${category}`, 'visibility', 'visible');
+    }
+    
+    // Fit the map to show all places in the category
+    const bounds = new mapboxgl.LngLatBounds();
+    placesInCategory.forEach(feature => {
+        bounds.extend(feature.geometry.coordinates);
+    });
+    
+    map.fitBounds(bounds, {
+        padding: 50,
+        maxZoom: 14
+    });
+    
+    // Store the current highlighted category
+    currentHighlightedCategory = category;
+    
+    // Show notification
+    const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+    showToastNotification(`Showing ${placesInCategory.length} ${categoryName} places`);
+}
+
+// Function to clear place category highlights
+function clearPlaceCategoryHighlight() {
+    // If there's a currently highlighted category, hide it if necessary
+    if (currentHighlightedCategory) {
+        if (map.getLayer(`places-${currentHighlightedCategory}`)) {
+            const checkbox = document.getElementById(`${currentHighlightedCategory}-places`);
+            const shouldBeVisible = checkbox && checkbox.checked;
+            map.setLayoutProperty(`places-${currentHighlightedCategory}`, 'visibility', 
+                shouldBeVisible ? 'visible' : 'none');
+        }
         
-        // Replace underscores with spaces and capitalize words
-        return name
-            .replace(/_/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-    };
+        // Reset the current highlighted category
+        currentHighlightedCategory = null;
+    }
     
-    // Set up scales
-    const xScale = d3.scaleBand()
-        .domain(topTypes.map(d => formatTypeName(d.type)))
-        .range([0, innerWidth])
-        .padding(0.3);
-        
-    const yScale = d3.scaleLinear()
-        .domain([0, d3.max(topTypes, d => d.percentage)])
-        .range([innerHeight, 0])
-        .nice();
-        
-    // Color scale based on category
-    const colorScale = d3.scaleOrdinal()
-        .domain(['traditional', 'community', 'modern'])
-        .range(['#ff8f00', '#00acc1', '#c51b8a']);
-    
-    // Add x-axis
-    g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale))
-        .selectAll('text')
-        .style('text-anchor', 'end')
-        .attr('dx', '-.8em')
-        .attr('dy', '.15em')
-        .attr('transform', 'rotate(-45)')
-        .style('font-size', '9px');
-    
-    // Add y-axis
-    g.append('g')
-        .call(d3.axisLeft(yScale).ticks(5))
-        .selectAll('text')
-        .style('font-size', '10px');
-    
-    // Add y-axis label
-    g.append('text')
-        .attr('transform', 'rotate(-90)')
-        .attr('y', -45)
-        .attr('x', -innerHeight / 2)
-        .attr('fill', '#333')
-        .style('font-size', '12px')
-        .style('text-anchor', 'middle')
-        .text('Percentage within Category (%)');
-    
-    // Add bars
-    g.selectAll('.bar')
-        .data(topTypes)
-        .enter()
-        .append('rect')
-        .attr('class', 'bar')
-        .attr('x', d => xScale(formatTypeName(d.type)))
-        .attr('y', d => yScale(d.percentage))
-        .attr('width', xScale.bandwidth())
-        .attr('height', d => innerHeight - yScale(d.percentage))
-        .attr('fill', d => colorScale(d.category))
-        .style('opacity', 0.8);
-    
-    // Add bar labels
-    g.selectAll('.bar-label')
-        .data(topTypes)
-        .enter()
-        .append('text')
-        .attr('class', 'bar-label')
-        .attr('x', d => xScale(formatTypeName(d.type)) + xScale.bandwidth() / 2)
-        .attr('y', d => yScale(d.percentage) - 5)
-        .attr('text-anchor', 'middle')
-        .style('font-size', '10px')
-        .style('font-weight', '600')
-        .text(d => `${d.percentage.toFixed(1)}%`);
-    
-    // Add legend
-    const legend = svg.append('g')
-        .attr('transform', `translate(${width - 100}, ${height - 20})`);
-    
-    ['traditional', 'community', 'modern'].forEach((category, i) => {
-        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
-        
-        legend.append('rect')
-            .attr('x', 0)
-            .attr('y', -i * 15)
-            .attr('width', 10)
-            .attr('height', 10)
-            .attr('fill', colorScale(category));
-        
-        legend.append('text')
-            .attr('x', 15)
-            .attr('y', -i * 15 + 8)
-            .style('font-size', '8px')
-            .text(categoryLabel);
+    // Restore layers based on checkbox state
+    ['traditional', 'community', 'modern'].forEach(category => {
+        if (map.getLayer(`places-${category}`)) {
+            const checkbox = document.getElementById(`${category}-places`);
+            if (checkbox) {
+                map.setLayoutProperty(`places-${category}`, 'visibility', 
+                    checkbox.checked ? 'visible' : 'none');
+            }
+        }
     });
 }
 
@@ -3808,6 +3755,170 @@ function getCorrelationStrength(correlation) {
     if (absCorrelation < 0.5) return 'Moderate';
     if (absCorrelation < 0.7) return 'Strong';
     return 'Very Strong';
+}
+
+// Function to clear place category highlights
+function clearPlaceCategoryHighlight() {
+    if (map.getLayer('highlighted-places-circle')) {
+        map.setLayoutProperty('highlighted-places-circle', 'visibility', 'none');
+    }
+}
+
+// Create a bar chart for place types breakdown
+function createPlaceTypesBreakdownChart(placeTypes) {
+    const chartContainer = document.getElementById('analysis-chart');
+    chartContainer.innerHTML = '';
+    
+    const width = chartContainer.clientWidth;
+    const height = 250;
+    const margin = { top: 30, right: 30, bottom: 90, left: 60 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    
+    // Group by category for calculating percentages within each category
+    const traditionalTotal = placeTypes.filter(p => p.category === 'traditional')
+        .reduce((sum, item) => sum + item.count, 0);
+    const communityTotal = placeTypes.filter(p => p.category === 'community')
+        .reduce((sum, item) => sum + item.count, 0);
+    const modernTotal = placeTypes.filter(p => p.category === 'modern')
+        .reduce((sum, item) => sum + item.count, 0);
+    
+    // Add percentage info to each place type
+    const placeTypesWithPct = placeTypes.map(type => {
+        let categoryTotal = 0;
+        if (type.category === 'traditional') categoryTotal = traditionalTotal;
+        else if (type.category === 'community') categoryTotal = communityTotal;
+        else if (type.category === 'modern') categoryTotal = modernTotal;
+        
+        return {
+            ...type,
+            percentage: (type.count / categoryTotal) * 100
+        };
+    });
+    
+    // Sort by count and take top 10
+    const topTypes = placeTypesWithPct
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    
+    const svg = d3.select('#analysis-chart')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+    
+    // Add title
+    svg.append('text')
+        .attr('x', width / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '14px')
+        .style('font-weight', '600')
+        .text('Top Third Place Types (% within category)');
+    
+    const g = svg.append('g')
+        .attr('transform', `translate(${margin.left},${margin.top})`);
+    
+    // Format type name to be more readable
+    const formatTypeName = (name) => {
+        if (!name) return 'Unknown';
+        
+        // Replace underscores with spaces and capitalize words
+        return name
+            .replace(/_/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+    };
+    
+    // Set up scales
+    const xScale = d3.scaleBand()
+        .domain(topTypes.map(d => formatTypeName(d.type)))
+        .range([0, innerWidth])
+        .padding(0.3);
+        
+    const yScale = d3.scaleLinear()
+        .domain([0, d3.max(topTypes, d => d.percentage)])
+        .range([innerHeight, 0])
+        .nice();
+        
+    // Color scale based on category
+    const colorScale = d3.scaleOrdinal()
+        .domain(['traditional', 'community', 'modern'])
+        .range(['#ff8f00', '#00acc1', '#c51b8a']);
+    
+    // Add x-axis
+    g.append('g')
+        .attr('transform', `translate(0,${innerHeight})`)
+        .call(d3.axisBottom(xScale))
+        .selectAll('text')
+        .style('text-anchor', 'end')
+        .attr('dx', '-.8em')
+        .attr('dy', '.15em')
+        .attr('transform', 'rotate(-45)')
+        .style('font-size', '9px');
+    
+    // Add y-axis
+    g.append('g')
+        .call(d3.axisLeft(yScale).ticks(5))
+        .selectAll('text')
+        .style('font-size', '10px');
+    
+    // Add y-axis label
+    g.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', -45)
+        .attr('x', -innerHeight / 2)
+        .attr('fill', '#333')
+        .style('font-size', '12px')
+        .style('text-anchor', 'middle')
+        .text('Percentage within Category (%)');
+    
+    // Add bars
+    g.selectAll('.bar')
+        .data(topTypes)
+        .enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => xScale(formatTypeName(d.type)))
+        .attr('y', d => yScale(d.percentage))
+        .attr('width', xScale.bandwidth())
+        .attr('height', d => innerHeight - yScale(d.percentage))
+        .attr('fill', d => colorScale(d.category))
+        .style('opacity', 0.8);
+    
+    // Add bar labels
+    g.selectAll('.bar-label')
+        .data(topTypes)
+        .enter()
+        .append('text')
+        .attr('class', 'bar-label')
+        .attr('x', d => xScale(formatTypeName(d.type)) + xScale.bandwidth() / 2)
+        .attr('y', d => yScale(d.percentage) - 5)
+        .attr('text-anchor', 'middle')
+        .style('font-size', '10px')
+        .style('font-weight', '600')
+        .text(d => `${d.percentage.toFixed(1)}%`);
+    
+    // Add legend
+    const legend = svg.append('g')
+        .attr('transform', `translate(${width - 100}, ${height - 20})`);
+    
+    ['traditional', 'community', 'modern'].forEach((category, i) => {
+        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+        
+        legend.append('rect')
+            .attr('x', 0)
+            .attr('y', -i * 15)
+            .attr('width', 10)
+            .attr('height', 10)
+            .attr('fill', colorScale(category));
+        
+        legend.append('text')
+            .attr('x', 15)
+            .attr('y', -i * 15 + 8)
+            .style('font-size', '8px')
+            .text(categoryLabel);
+    });
 }
 
 // Show spatial analysis
